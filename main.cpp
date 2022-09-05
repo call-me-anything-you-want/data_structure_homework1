@@ -1,10 +1,12 @@
-#include "vim_r.h"
+#include "header.h"
 int main(int argc, char **argv)
 {
+	char *fileName;
 	if (argc>1)
-		vim_r editor(argv[1]);
+		fileName=argv[1];
 	else
-		vim_r editor(nullptr);
+		fileName=nullptr;
+	vim_r editor(fileName);
 	editor.run();
 	return 0;
 }
