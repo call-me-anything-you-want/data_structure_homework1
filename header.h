@@ -29,6 +29,7 @@ class cursorPos
 class vim_r
 {
 	public:
+		std::string filename; // the name of the file
 		fileContent *ft; // records the file content currently being displayed in the window
 		cursorPos cp; // records the position of the cursor
 		mode m; // records current mode

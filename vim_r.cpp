@@ -6,6 +6,11 @@
 using namespace std;
 vim_r::vim_r(char *filename) : cp()
 {
+	this->filename=string(filename);
+	int temp=size(this->filename);
+	while (temp>=0 && this->filename[temp]!='/' && this->filename[temp]!='\\')
+		temp--;
+	this->filename=this->filename.substr(temp+1);
 	this->ft=nullptr;
 	this->m=NORMAL;
 	if (filename!=nullptr)
