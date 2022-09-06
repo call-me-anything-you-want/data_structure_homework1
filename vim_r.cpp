@@ -73,4 +73,23 @@ void vim_r::takeAction(char ch)
 }
 
 void vim_r::takeActionNormal(char ch)
-{}
+{
+	if (ch=='j')
+		this->cp.moveDown();
+	else if (ch=='k')
+		this->cp.moveUp();
+	else if (ch=='l')
+		this->cp.moveRight();
+	else if (ch=='h')
+		this->cp.moveLeft();
+	else if (ch=='i')
+		this->m=INSERT;
+	else if (ch=='a')
+	{
+		this->m=INSERT;
+		if (!this->cp.linePos->emptyLine())
+			this->cp.charPos=this->cp.charPos+1;
+	}
+	else if (ch==':')
+		this->m=EX;
+}
