@@ -34,10 +34,10 @@ class vim_r
 		mode m; // records current mode
 		vim_r(char * filename);
 		void run();
-		void takeAction(char ch);
-		void takeActionNormal(char ch);
-		void takeActionInsert(char ch);
-		void takeActionVisual(char ch);
-		void takeActionEx(char ch);
+		void takeAction(int ch);
+		void takeActionNormal(int ch);
+		void takeActionInsert(int ch);
+		void takeActionVisual(int ch);
+		void takeActionEx(int ch);
 };
 #endif
