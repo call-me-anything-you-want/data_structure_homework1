@@ -126,7 +126,7 @@ void vim_r::takeActionNormal(int ch)
 
 void vim_r::takeActionInsert(int ch)
 {
-	if (ch=='\n')
+	if ((char)ch=='\n')
 	{
 		// create a new line
 		int currentLineLen=size(this->cp.linePos->line);
@@ -150,7 +150,7 @@ void vim_r::takeActionInsert(int ch)
 		this->cp.linePos=temp;
 		this->cp.charPos=0;
 	}
-	else if (ch=='\b')
+	else if ((char)ch=='\b')
 	{
 		// delete a character
 		int currentLineLen=size(this->cp.linePos->line);
@@ -175,6 +175,16 @@ void vim_r::takeActionInsert(int ch)
 			}
 		}
 	}
+	else if (ch==27)
+	{
+		// esc key
+		this->m=NORMAL;
+		int currentLineLen=size(this->cp.linePos->line);
+		if (this->cp.charPos>=currentLineLen)
+			this->cp.charPos=currentLineLen-1;
+		else if (this->cp.charPos!=0)
+			this->cp.charPos--;
+	}
 	else if (ch==83+256)
 	{
 		// del key
@@ -189,8 +199,17 @@ void vim_r::takeActionInsert(int ch)
 		// f1, f2, ..., f12
 		// do nothing for now
 	}
-	else
+	else if (ch<=127)
 	{
-		// just insert char(ch) would be fine.
+		// all other chars except f1-f12
+		// just insert char(ch)
+		int currentLineLen=size(this->cp.linePos->line);
+		if (this->cp.charPos>currentLineLen)
+			this->cp.charPos=currentLineLen;
+		if (this->cp.charPos==currentLineLen) // cursor at the end of the line
+			this->cp.linePos->line+=(char)ch;
+		else
+			this->cp.linePos->line.insert(this->cp.charPos, 1, (char)ch);
+		this->cp.charPos++;
 	}
 }
