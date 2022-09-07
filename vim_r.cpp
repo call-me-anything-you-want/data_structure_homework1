@@ -357,6 +357,7 @@ void vim_r::takeActionEX(string EXmessage)
 				}
 				fout.close();
 				this->message=this->filename+"has been written.";
+				this->changed=false;
 			}
 			else
 				this->message=this->filename+"has been written.";
@@ -376,6 +377,7 @@ void vim_r::takeActionEX(string EXmessage)
 			fout.close();
 			this->filename=EXmessage;
 			this->message=this->filename+"has been written.";
+			this->changed=false;
 		}
 	}
 	else if(command=="q" || command=="quit")
