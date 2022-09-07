@@ -4,18 +4,12 @@
 #include<string>
 #include<conio.h>
 using namespace std;
-vim_r::vim_r(char *filename) : cp()
+vim_r::vim_r(char *filename) : cp(), changed(false)
 {
 	if (filename==nullptr)
 		this->filename="";
 	else
-	{
 		this->filename=string(filename);
-		int temp=size(this->filename);
-		while (temp>=0 && this->filename[temp]!='/' && this->filename[temp]!='\\')
-			temp--;
-		this->filename=this->filename.substr(temp+1);
-	}
 	this->ft=nullptr;
 	this->m=NORMAL;
 	this->message="";
@@ -152,7 +146,10 @@ void vim_r::takeActionNormal(int ch)
 				this->cp.charPos=currentLineLen-1;
 			// delete the character under the cursor
 			if (currentLineLen!=0)
+			{
 				this->cp.linePos->line.erase(this->cp.charPos, 1);
+				this->changed=true;
+			}
 			else
 				this->cp.charPos=0;
 			if (this->cp.charPos==currentLineLen-1 && currentLineLen!=1)
@@ -167,6 +164,7 @@ void vim_r::takeActionInsert(int ch)
 	{
 		if ((char)ch=='\n')
 		{
+			this->changed=true;
 			// create a new line
 			int currentLineLen=size(this->cp.linePos->line);
 			int currentCol=this->cp.charPos>currentLineLen ? currentLineLen : this->cp.charPos;
@@ -196,6 +194,7 @@ void vim_r::takeActionInsert(int ch)
 			int currentCol=this->cp.charPos>currentLineLen ? currentLineLen : this->cp.charPos;
 			if (currentCol!=0) // if the cursor is not at the front of this line, just delete a char
 			{
+				this->changed=true;
 				this->cp.linePos->line.erase(currentCol-1, 1);
 				this->cp.charPos=currentCol-1;
 			}
@@ -203,6 +202,7 @@ void vim_r::takeActionInsert(int ch)
 			{
 				if (this->cp.linePos->prev!=nullptr) // if the cursor is not at the front of the whole file
 				{
+					this->changed=true;
 					this->cp.charPos=size(this->cp.linePos->prev->line);
 					this->cp.linePos->prev->line+=this->cp.linePos->line;
 					fileContent *temp=this->cp.linePos;
@@ -228,6 +228,7 @@ void vim_r::takeActionInsert(int ch)
 		{
 			// all other chars
 			// just insert char(ch)
+			this->changed=true;
 			int currentLineLen=size(this->cp.linePos->line);
 			if (this->cp.charPos>currentLineLen)
 				this->cp.charPos=currentLineLen;
@@ -265,7 +266,8 @@ void vim_r::takeActionEx(int ch)
 		if ((char)ch=='\n')
 		{
 			// deal with command
-			takeActionEx(this->message);
+			this->takeActionEX(this->message);
+			this->m=NORMAL;
 		}
 		else if ((char)ch=='\t')
 		{
@@ -298,4 +300,14 @@ void vim_r::takeActionEX(string message)
 	}
 
 	// take actions
+	if (message[0]=='w')
+	{
+		// write
+
+		this->message=this->filename+"has been written.";
+	}
+	else if (message[0]=='q')
+	{
+		// quit
+	}
 }

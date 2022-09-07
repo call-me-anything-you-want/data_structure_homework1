@@ -33,6 +33,7 @@ class vim_r
 		fileContent *ft; // records the file content currently being displayed in the window
 		cursorPos cp; // records the position of the cursor
 		mode m; // records current mode
+		bool changed; // true if the file is changed
 		std::string message; // record the message needs to be displayed at the bottom, including input command in EX mode
 		vim_r(char * filename);
 		void run();
