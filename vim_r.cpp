@@ -3,6 +3,7 @@
 #include<iostream>
 #include<string>
 #include<conio.h>
+#include<vector>
 using namespace std;
 vim_r::vim_r(char *filename) : cp(), changed(false)
 {
@@ -41,6 +42,7 @@ vim_r::vim_r(char *filename) : cp(), changed(false)
 				}
 			}
 			this->cp.linePos=this->ft;
+			fin.close();
 		}
 	}
 	else
@@ -286,28 +288,106 @@ void vim_r::takeActionEx(int ch)
 	}
 }
 
-void vim_r::takeActionEX(string message)
+void vim_r::takeActionEX(string EXmessage)
 {
-	// delete extra spaces and leading colon in the message
-	message.erase(0, 1);
-	for (int i=1;i<size(message);++i)
+	// delete extra spaces and leading colon in the EXmessage
+	EXmessage.erase(0, 1);
+	for (int i=size(EXmessage)-1;i>=0;i--)
 	{
-		if (message[i-1]==' ' && message[i]==' ')
+		if (EXmessage[i]==' ')
+			EXmessage.erase(i, 1);
+		else
+			break;
+	}
+	for (int i=0;i<size(EXmessage);i++)
+	{
+		if (EXmessage[i]==' ')
 		{
-			message.erase(i, 1);
+			EXmessage.erase(i, 1);
+			i--;
+		}
+		else
+			break;
+	}
+	for (int i=1;i<size(EXmessage);++i)
+	{
+		if (EXmessage[i-1]==' ' && EXmessage[i]==' ')
+		{
+			EXmessage.erase(i, 1);
 			i--;
 		}
 	}
 
+	if (EXmessage=="")
+		return;
+
+	// find the command
+	string command="";
+	vector<string> parameters(0);
+	int beg=0, end=0;
+	while(end<size(EXmessage) && EXmessage[end]!=' ')
+		++end;
+	command=EXmessage.substr(0, end);
+	if (end<size(EXmessage)-1)
+		EXmessage=EXmessage.substr(end+1);
+	else
+		EXmessage="";
+
 	// take actions
-	if (message[0]=='w')
+	if (command=="w" || command=="write")
 	{
 		// write
-
-		this->message=this->filename+"has been written.";
+		if (size(EXmessage)==0)
+		{
+			if (this->filename=="")
+				this->message="No file name.";
+			else if (this->changed)
+			{
+				// just write the current file
+				// delete the file content before writing
+				fstream fout(this->filename, ios::out|ios::trunc);
+				fileContent *temp=this->ft;
+				while (temp!=nullptr)
+				{
+					fout << temp->line;
+					temp=temp->next;
+					if (temp!=nullptr)
+						fout << endl;
+				}
+				fout.close();
+				this->message=this->filename+"has been written.";
+			}
+			else
+				this->message=this->filename+"has been written.";
+		}
+		else
+		{
+			// write the current file to file EXmessage
+			fstream fout(EXmessage, ios::out|ios::trunc);
+			fileContent *temp=this->ft;
+			while (temp!=nullptr)
+			{
+				fout << temp->line;
+				temp=temp->next;
+				if (temp!=nullptr)
+					fout << endl;
+			}
+			fout.close();
+			this->filename=EXmessage;
+			this->message=this->filename+"has been written.";
+		}
 	}
-	else if (message[0]=='q')
+	else if(command=="q" || command=="quit")
 	{
 		// quit
+		if (!this->changed)
+			exit(0);
+		else
+			this->message="No write since last change.";
+	}
+	else if (command=="q!")
+	{
+		// quit with out save
+		exit(0);
 	}
 }
