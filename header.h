@@ -33,12 +33,14 @@ class vim_r
 		fileContent *ft; // records the file content currently being displayed in the window
 		cursorPos cp; // records the position of the cursor
 		mode m; // records current mode
+		std::string message; // record the message needs to be displayed at the bottom, including input command in EX mode
 		vim_r(char * filename);
 		void run();
 		void takeAction(int ch);
 		void takeActionNormal(int ch);
 		void takeActionInsert(int ch);
 		void takeActionVisual(int ch);
-		void takeActionEx(int ch);
+		void takeActionEx(int ch); // this one deal with key input
+		void takeActionEX(std::string message); // this one deal with line input
 };
 #endif
