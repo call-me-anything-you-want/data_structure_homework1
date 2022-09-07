@@ -87,15 +87,15 @@ void vim_r::takeAction(int ch)
 
 void vim_r::takeActionNormal(int ch)
 {
-	if (ch=='j')
+	if ((char)ch=='j')
 		this->cp.moveDown();
-	else if (ch=='k')
+	else if ((char)ch=='k')
 		this->cp.moveUp();
-	else if (ch=='l')
+	else if ((char)ch=='l')
 		this->cp.moveRight();
-	else if (ch=='h')
+	else if ((char)ch=='h')
 		this->cp.moveLeft();
-	else if (ch=='i')
+	else if ((char)ch=='i')
 	{
 		this->m=INSERT;
 		if (this->ft==nullptr)
@@ -107,7 +107,7 @@ void vim_r::takeActionNormal(int ch)
 		int currentLineLen=size(this->cp.linePos->line);
 		this->cp.charPos=this->cp.charPos>=currentLineLen ? currentLineLen-1 : this->cp.charPos;
 	}
-	else if (ch=='a')
+	else if ((char)ch=='a')
 	{
 		this->m=INSERT;
 		if (this->ft==nullptr)
@@ -125,8 +125,22 @@ void vim_r::takeActionNormal(int ch)
 				this->cp.charPos=this->cp.charPos>currentLineLen ? currentLineLen : this->cp.charPos+1;
 		}
 	}
-	else if (ch==':')
+	else if ((char)ch==':')
 		this->m=EX;
+	else if (ch==83+256)
+	{
+		// del key
+		int currentLineLen=size(this->cp.linePos->line);
+		if (this->cp.charPos>=currentLineLen)
+			this->cp.charPos=currentLineLen-1;
+		// delete the character under the cursor
+		if (currentLineLen!=0)
+			this->cp.linePos->line.erase(this->cp.charPos, 1);
+		else
+			this->cp.charPos=0;
+		if (this->cp.charPos==currentLineLen-1 && currentLineLen!=1)
+			this->cp.charPos--;
+	}
 }
 
 void vim_r::takeActionInsert(int ch)
@@ -193,6 +207,7 @@ void vim_r::takeActionInsert(int ch)
 	else if (ch==83+256)
 	{
 		// del key
+		this->takeActionInsert('\b');
 	}
 	else if (ch==72+256 || ch==80+256 || ch==75+256 || ch==77+256)
 	{
