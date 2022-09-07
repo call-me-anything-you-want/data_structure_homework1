@@ -291,7 +291,8 @@ void vim_r::takeActionEx(int ch)
 void vim_r::takeActionEX(string EXmessage)
 {
 	// delete extra spaces and leading colon in the EXmessage
-	EXmessage.erase(0, 1);
+	if (EXmessage[0]==':')
+		EXmessage.erase(0, 1);
 	for (int i=size(EXmessage)-1;i>=0;i--)
 	{
 		if (EXmessage[i]==' ')
@@ -389,5 +390,10 @@ void vim_r::takeActionEX(string EXmessage)
 	{
 		// quit with out save
 		exit(0);
+	}
+	else if (command=="wq")
+	{
+		this->takeActionEX(":w");
+		this->takeActionEX(":q");
 	}
 }
