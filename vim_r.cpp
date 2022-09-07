@@ -325,7 +325,7 @@ void vim_r::takeActionEX(string EXmessage)
 	string command="";
 	vector<string> parameters(0);
 	int beg=0, end=0;
-	while(end<size(EXmessage) && EXmessage[end]!=' ')
+	while(end<size(EXmessage) && EXmessage[end]!=' ' && EXmessage[end]!='/')
 		++end;
 	command=EXmessage.substr(0, end);
 	if (end<size(EXmessage)-1)
