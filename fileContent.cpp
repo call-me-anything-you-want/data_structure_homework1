@@ -25,3 +25,20 @@ void deleteAll(fileContent *f)
 		delete f;
 	}
 }
+
+fileContent *copyAll(fileContent *f)
+{
+	if (f==nullptr)
+		return nullptr;
+	fileContent *newFile=new fileContent(f->line);
+	fileContent *f1=newFile, *f2=f;
+	while (f2->next!=nullptr)
+	{
+		f2=f2->next;
+		fileContent *temp=new fileContent(f2->line);
+		f1->next=temp;
+		temp->prev=f1;
+		f1=temp;
+	}
+	return newFile;
+}

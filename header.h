@@ -15,6 +15,7 @@ class fileContent
 		bool emptyLine();
 };
 void deleteAll(fileContent *f); // delete the link list starts from f
+fileContent *copyAll(fileContent *f); // return a link list that has the same content as f
 class cursorPos
 {
 	public:

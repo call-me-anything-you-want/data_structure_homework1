@@ -123,6 +123,38 @@ void vim_r::takeActionNormal(int ch)
 			// if deleted the last character, cursor needs to be moved back
 			this->cp.moveCursor(NORMAL, NONE);
 		}
+		else if ((char)ch=='p')
+		{
+			// paste the clipboard
+			this->cp.moveCursor(NORMAL, NONE);
+			if (this->clipBoard!=nullptr)
+			{
+				fileContent *pasteContent=copyAll(this->clipBoard);
+				fileContent *pasteTail=pasteContent;
+				while (pasteTail->next!=nullptr)
+					pasteTail=pasteTail->next;
+				if (this->ft==nullptr)
+				{
+					this->ft=new fileContent();
+					this->cp.linePos=ft;
+				}
+				string s1, s2;
+				int lineLen=size(this->cp.linePos->line);
+				s1=lineLen==0 ? "" : this->cp.linePos->line.substr(0, this->cp.charPos+1);
+				s2=this->cp.charPos==lineLen-1 ? "" : this->cp.linePos->line.substr(this->cp.charPos+1);
+				pasteContent->line=s1+pasteContent->line;
+				pasteTail->line+=s2;
+				pasteContent->prev=this->cp.linePos->prev;
+				pasteTail->next=this->cp.linePos->next;
+				if (pasteContent->prev!=nullptr)
+					pasteContent->prev->next=pasteContent;
+				if (pasteTail->next!=nullptr)
+					pasteTail->next->prev=pasteTail;
+				delete this->cp.linePos;
+				this->cp.linePos=pasteContent;
+				this->cp.moveCursor(NORMAL, RIGHT);
+			}
+		}
 		else if ((char)ch=='i')
 		{
 			this->m=INSERT;
