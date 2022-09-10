@@ -1,0 +1,1 @@
+g++ .\cursorPos.cpp .\fileContent.cpp .\header.h .\main.cpp .\vim_r.cpp -o SimpleWord

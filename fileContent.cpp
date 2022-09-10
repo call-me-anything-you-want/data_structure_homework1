@@ -9,7 +9,7 @@ fileContent::fileContent(string line) : line(line)
 
 bool fileContent::emptyLine()
 {
-	return size(this->line)==0;
+	return this->line.size()==0;
 }
 
 void deleteAll(fileContent *f)

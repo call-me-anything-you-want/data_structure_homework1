@@ -29,7 +29,7 @@ void cursorPos::moveCursor(mode m, direction d)
 		}
 		else if (d==RIGHT)
 		{
-			int lineLen=size(this->linePos->line);
+			int lineLen=this->linePos->line.size();
 			if (lineLen==0)
 				this->charPos=0;
 			else if (this->charPos>=lineLen-1)
@@ -39,7 +39,7 @@ void cursorPos::moveCursor(mode m, direction d)
 		}
 		else if (d==LEFT)
 		{
-			int lineLen=size(this->linePos->line);
+			int lineLen=this->linePos->line.size();
 			if (lineLen==0)
 				this->charPos=0;
 			else if (this->charPos>=lineLen)
@@ -48,7 +48,7 @@ void cursorPos::moveCursor(mode m, direction d)
 		}
 		else if (d==NONE)
 		{
-			int currentLineLen=size(this->linePos->line);
+			int currentLineLen=this->linePos->line.size();
 			if (currentLineLen==0)
 				this->charPos=0;
 			else if (this->charPos>=currentLineLen)
@@ -59,7 +59,7 @@ void cursorPos::moveCursor(mode m, direction d)
 	{
 		if (d==RIGHT)
 		{
-			int lineLen=size(this->linePos->line);
+			int lineLen=this->linePos->line.size();
 			if (lineLen==0)
 				this->charPos=0;
 			else if (this->charPos>=lineLen)
@@ -69,7 +69,7 @@ void cursorPos::moveCursor(mode m, direction d)
 		}
 		else if (d==LEFT)
 		{
-			int lineLen=size(this->linePos->line);
+			int lineLen=this->linePos->line.size();
 			if (lineLen==0)
 				this->charPos=0;
 			else if (this->charPos>lineLen)
@@ -79,7 +79,7 @@ void cursorPos::moveCursor(mode m, direction d)
 		}
 		else if (d==NONE)
 		{
-			int currentLineLen=size(this->linePos->line);
+			int currentLineLen=this->linePos->line.size();
 			if (this->charPos>currentLineLen)
 				this->charPos=currentLineLen;
 		}
@@ -100,7 +100,7 @@ void cursorPos::moveCursor(mode m, direction d)
 		}
 		else if (d==RIGHT)
 		{
-			int lineLen=size(this->linePos->line);
+			int lineLen=this->linePos->line.size();
 			if (lineLen==0)
 				this->charPos=0;
 			else if (this->charPos>=lineLen)
@@ -110,7 +110,7 @@ void cursorPos::moveCursor(mode m, direction d)
 		}
 		else if (d==LEFT)
 		{
-			int lineLen=size(this->linePos->line);
+			int lineLen=this->linePos->line.size();
 			if (lineLen==0)
 				this->charPos=0;
 			else if (this->charPos>lineLen)

@@ -4,6 +4,7 @@
 #include<string>
 #include<conio.h>
 #include<vector>
+#include<Windows.h>
 using namespace std;
 vim_r::vim_r(char *filename) : cp(), changed(false), clipBoard(nullptr)
 {
@@ -57,6 +58,32 @@ vim_r::vim_r(char *filename) : cp(), changed(false), clipBoard(nullptr)
 
 void vim_r::run()
 {
+	// 双缓冲变量
+	HANDLE hOutBuffer1, hOutBuffer2;
+	COORD coord = { 0,0 };
+	DWORD bytes = 0;
+	//缓冲区初始化
+	hOutBuffer1 = CreateConsoleScreenBuffer(
+			GENERIC_WRITE,//定义进程可以往缓冲区写数据
+			FILE_SHARE_WRITE,//定义缓冲区可以共享写入权限
+			NULL,
+			CONSOLE_TEXTMODE_BUFFER,
+			NULL
+			);
+	hOutBuffer2 = CreateConsoleScreenBuffer(
+			GENERIC_WRITE,
+			FILE_SHARE_WRITE,
+			NULL,
+			CONSOLE_TEXTMODE_BUFFER,
+			NULL
+			);
+	//选择隐藏缓冲区光标可见性
+	CONSOLE_CURSOR_INFO cci;
+	cci.bVisible = 0;
+	cci.dwSize = 1;
+	SetConsoleCursorInfo(hOutBuffer1, &cci);
+	SetConsoleCursorInfo(hOutBuffer2, &cci);
+	int activeBuffer=1;
 	while(1)
 	{
 		if (_kbhit())
@@ -72,13 +99,39 @@ void vim_r::run()
 			}
 		}
 		// use 2 buffers to solve the current flash
-		system("cls");
-		fileContent *temp=this->ft;
-		while (temp!=nullptr)
+		if (activeBuffer==1)
 		{
-			cout << temp->line << "\n";
-			temp=temp->next;
+			//输出
+			fileContent *temp=this->ft;
+			coord.Y=0;
+			while (temp!=nullptr)
+			{
+				char *temp2=new char[temp->line.size()+1];
+				strcpy(temp2, temp->line.c_str());
+				WriteConsoleOutputCharacterA(hOutBuffer1, temp2, ft->line.size(), coord, &bytes);
+				delete [] temp2;
+				temp=temp->next;
+				coord.Y++;
+			}
+			SetConsoleActiveScreenBuffer(hOutBuffer1);//设置新的缓冲区为活动显示缓冲
 		}
+		else
+		{
+			//输出
+			fileContent *temp=this->ft;
+			coord.Y=0;
+			while (temp!=nullptr)
+			{
+				char *temp2=new char[temp->line.size()+1];
+				strcpy(temp2, temp->line.c_str());
+				WriteConsoleOutputCharacterA(hOutBuffer2, temp2, ft->line.size(), coord, &bytes);
+				delete [] temp2;
+				temp=temp->next;
+				coord.Y++;
+			}
+			SetConsoleActiveScreenBuffer(hOutBuffer2);//设置新的缓冲区为活动显示缓冲
+		}
+		activeBuffer=3-activeBuffer;
 	}
 }
 
@@ -110,7 +163,7 @@ void vim_r::takeActionNormal(int ch)
 		{
 			// delete the char under the cursor
 			this->cp.moveCursor(NORMAL, NONE);
-			int currentLineLen=size(this->cp.linePos->line);
+			int currentLineLen=this->cp.linePos->line.size();
 			if (currentLineLen!=0)
 			{
 				// copy the deleting char into the clip board
@@ -142,7 +195,7 @@ void vim_r::takeActionNormal(int ch)
 					this->cp.linePos=ft;
 				}
 				string s1, s2;
-				int lineLen=size(this->cp.linePos->line);
+				int lineLen=this->cp.linePos->line.size();
 				s1=lineLen==0 ? "" : this->cp.linePos->line.substr(0, this->cp.charPos+1);
 				s2=this->cp.charPos==lineLen-1 ? "" : this->cp.linePos->line.substr(this->cp.charPos+1);
 				pasteContent->line=s1+pasteContent->line;
@@ -213,7 +266,7 @@ void vim_r::takeActionInsert(int ch)
 			this->changed=true;
 			// create a new line
 			this->cp.moveCursor(INSERT, NONE);
-			int currentLineLen=size(this->cp.linePos->line);
+			int currentLineLen=this->cp.linePos->line.size();
 			string newline;
 			if (this->cp.charPos==currentLineLen)
 				newline="";
@@ -237,7 +290,7 @@ void vim_r::takeActionInsert(int ch)
 		{
 			// delete a character
 			this->cp.moveCursor(INSERT, NONE);
-			int currentLineLen=size(this->cp.linePos->line);
+			int currentLineLen=this->cp.linePos->line.size();
 			if (this->cp.charPos!=0) // if the cursor is not at the front of this line, just delete a char
 			{
 				this->changed=true;
@@ -249,7 +302,7 @@ void vim_r::takeActionInsert(int ch)
 				if (this->cp.linePos->prev!=nullptr) // if the cursor is not at the front of the whole file
 				{
 					this->changed=true;
-					this->cp.charPos=size(this->cp.linePos->prev->line);
+					this->cp.charPos=this->cp.linePos->prev->line.size();
 					this->cp.linePos->prev->line+=this->cp.linePos->line;
 					fileContent *temp=this->cp.linePos;
 					this->cp.linePos->prev->next=this->cp.linePos->next;
@@ -272,7 +325,7 @@ void vim_r::takeActionInsert(int ch)
 			// just insert char(ch)
 			this->changed=true;
 			this->cp.moveCursor(INSERT, NONE);
-			int currentLineLen=size(this->cp.linePos->line);
+			int currentLineLen=this->cp.linePos->line.size();
 			if (this->cp.charPos==currentLineLen) // cursor at the end of the line
 				this->cp.linePos->line+=(char)ch;
 			else
@@ -332,14 +385,14 @@ void vim_r::takeActionEX(string EXmessage)
 	// delete extra spaces and leading colon in the EXmessage
 	if (EXmessage[0]==':')
 		EXmessage.erase(0, 1);
-	for (int i=size(EXmessage)-1;i>=0;i--)
+	for (int i=EXmessage.size()-1;i>=0;i--)
 	{
 		if (EXmessage[i]==' ')
 			EXmessage.erase(i, 1);
 		else
 			break;
 	}
-	for (int i=0;i<size(EXmessage);i++)
+	for (int i=0;i<EXmessage.size();i++)
 	{
 		if (EXmessage[i]==' ')
 		{
@@ -349,7 +402,7 @@ void vim_r::takeActionEX(string EXmessage)
 		else
 			break;
 	}
-	for (int i=1;i<size(EXmessage);++i)
+	for (int i=1;i<EXmessage.size();++i)
 	{
 		if (EXmessage[i-1]==' ' && EXmessage[i]==' ')
 		{
@@ -365,10 +418,10 @@ void vim_r::takeActionEX(string EXmessage)
 	string command="";
 	vector<string> parameters(0);
 	int beg=0, end=0;
-	while(end<size(EXmessage) && EXmessage[end]!=' ' && EXmessage[end]!='/')
+	while(end<EXmessage.size() && EXmessage[end]!=' ' && EXmessage[end]!='/')
 		++end;
 	command=EXmessage.substr(0, end);
-	if (end<size(EXmessage)-1)
+	if (end<EXmessage.size()-1)
 		EXmessage=EXmessage.substr(end+1);
 	else
 		EXmessage="";
@@ -377,7 +430,7 @@ void vim_r::takeActionEX(string EXmessage)
 	if (command=="w" || command=="write")
 	{
 		// write
-		if (size(EXmessage)==0)
+		if (EXmessage.size()==0)
 		{
 			if (this->filename=="")
 				this->message="No file name.";
