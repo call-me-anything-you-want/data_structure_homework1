@@ -22,6 +22,8 @@ vim_r::vim_r(char *filename) : cp(), changed(false), clipBoard(nullptr)
 		{
 			this->message="can't open file "+string(filename)+".";
 			this->filename="";
+			this->ft=new fileContent();
+			this->cp.linePos=this->ft;
 		}
 		else
 		{
@@ -47,7 +49,8 @@ vim_r::vim_r(char *filename) : cp(), changed(false), clipBoard(nullptr)
 	}
 	else
 	{
-		this->ft=nullptr;
+		this->ft=new fileContent();
+		this->cp.linePos=this->ft;
 	}
 	this->visualCursor=cursorPos(this->cp);
 }
