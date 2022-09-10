@@ -5,7 +5,7 @@
 #include<conio.h>
 #include<vector>
 using namespace std;
-vim_r::vim_r(char *filename) : cp(), changed(false)
+vim_r::vim_r(char *filename) : cp(), changed(false), clipBoard(nullptr)
 {
 	if (filename==nullptr)
 		this->filename="";
@@ -110,6 +110,11 @@ void vim_r::takeActionNormal(int ch)
 			int currentLineLen=size(this->cp.linePos->line);
 			if (currentLineLen!=0)
 			{
+				// copy the deleting char into the clip board
+				deleteAll(this->clipBoard);
+				this->clipBoard=new fileContent();
+				this->clipBoard->line=this->cp.linePos->line[this->cp.charPos];
+				// delete the char
 				this->cp.linePos->line.erase(this->cp.charPos, 1);
 				this->changed=true;
 			}

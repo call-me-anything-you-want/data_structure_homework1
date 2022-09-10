@@ -14,6 +14,7 @@ class fileContent
 		fileContent *next; // pointer to next line
 		bool emptyLine();
 };
+void deleteAll(fileContent *f); // delete the link list starts from f
 class cursorPos
 {
 	public:
@@ -30,6 +31,7 @@ class vim_r
 	public:
 		std::string filename; // the name of the file
 		fileContent *ft; // records the file content currently being displayed in the window
+		fileContent *clipBoard; // used for copy and paste
 		cursorPos cp; // records the position of the cursor
 		cursorPos visualCursor; // visual mode nees 2 cursors, one is the current cursor, the other is stored in visualCursor
 		mode m; // records current mode
