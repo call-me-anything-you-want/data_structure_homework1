@@ -435,3 +435,20 @@ void vim_r::takeActionEX(string EXmessage)
 		this->takeActionEX(":q");
 	}
 }
+
+void vim_r::takeActionVisual(int ch)
+{
+	if (ch<=127)
+	{
+		if ((char)ch=='h')
+			this->cp.moveCursor(VISUAL, LEFT);
+		else if ((char)ch=='j')
+			this->cp.moveCursor(VISUAL, DOWN);
+		else if ((char)ch=='k')
+			this->cp.moveCursor(VISUAL, UP);
+		else if ((char)ch=='l')
+			this->cp.moveCursor(VISUAL, RIGHT);
+	}
+	else
+	{}
+}
