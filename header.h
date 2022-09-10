@@ -2,6 +2,7 @@
 #define HEADER
 #include<string>
 enum mode {NORMAL, INSERT, EX, VISUAL};
+enum direction {UP, DOWN, LEFT, RIGHT, NONE};
 const int displayRowNum=10;
 const int displayColNum=20;
 class fileContent
@@ -17,11 +18,9 @@ class cursorPos
 {
 	public:
 		cursorPos();
-		// the following movements are movements in normal mode. movements in insert mode is a little bit different
-		void moveUp();
-		void moveDown();
-		void moveLeft();
-		void moveRight();
+		cursorPos(const cursorPos &c);
+		// move the cursor under different modes, if the direction is NONE, it means to set the cursor's charPos to it's true value
+		void moveCursor(mode m, direction d);
 		// the cursor is currently at linePos->line[charPos]
 		fileContent *linePos;
 		int charPos;
@@ -32,6 +31,7 @@ class vim_r
 		std::string filename; // the name of the file
 		fileContent *ft; // records the file content currently being displayed in the window
 		cursorPos cp; // records the position of the cursor
+		cursorPos visualCursor; // visual mode nees 2 cursors, one is the current cursor, the other is stored in visualCursor
 		mode m; // records current mode
 		bool changed; // true if the file is changed
 		std::string message; // record the message needs to be displayed at the bottom, including input command in EX mode

@@ -49,6 +49,7 @@ vim_r::vim_r(char *filename) : cp(), changed(false)
 	{
 		this->ft=nullptr;
 	}
+	this->visualCursor=cursorPos(this->cp);
 }
 
 void vim_r::run()
@@ -95,13 +96,28 @@ void vim_r::takeActionNormal(int ch)
 	if (ch<=127)
 	{
 		if ((char)ch=='j')
-			this->cp.moveDown();
+			this->cp.moveCursor(NORMAL, DOWN);
 		else if ((char)ch=='k')
-			this->cp.moveUp();
+			this->cp.moveCursor(NORMAL, UP);
 		else if ((char)ch=='l')
-			this->cp.moveRight();
+			this->cp.moveCursor(NORMAL, RIGHT);
 		else if ((char)ch=='h')
-			this->cp.moveLeft();
+			this->cp.moveCursor(NORMAL, LEFT);
+		else if ((char)ch=='x')
+		{
+			// delete the char under the cursor
+			this->cp.moveCursor(NORMAL, NONE);
+			int currentLineLen=size(this->cp.linePos->line);
+			if (currentLineLen!=0)
+			{
+				this->cp.linePos->line.erase(this->cp.charPos, 1);
+				this->changed=true;
+			}
+			else
+				this->cp.charPos=0;
+			// if deleted the last character, cursor needs to be moved back
+			this->cp.moveCursor(NORMAL, NONE);
+		}
 		else if ((char)ch=='i')
 		{
 			this->m=INSERT;
@@ -111,8 +127,8 @@ void vim_r::takeActionNormal(int ch)
 				this->cp.linePos=this->ft;
 				this->cp.charPos=0;
 			}
-			int currentLineLen=size(this->cp.linePos->line);
-			this->cp.charPos=this->cp.charPos>=currentLineLen ? currentLineLen-1 : this->cp.charPos;
+			else
+				this->cp.moveCursor(NORMAL, NONE);
 		}
 		else if ((char)ch=='a')
 		{
@@ -124,13 +140,13 @@ void vim_r::takeActionNormal(int ch)
 				this->cp.charPos=0;
 			}
 			else
-			{
-				int currentLineLen=size(this->cp.linePos->line);
-				if (currentLineLen==0)
-					this->cp.charPos=0;
-				else
-					this->cp.charPos=this->cp.charPos>currentLineLen ? currentLineLen : this->cp.charPos+1;
-			}
+				this->cp.moveCursor(INSERT, RIGHT);
+		}
+		else if ((char)ch=='v')
+		{
+			// enter visual mode
+			this->m=VISUAL;
+			this->visualCursor=this->cp;
 		}
 		else if ((char)ch==':')
 		{
@@ -143,19 +159,7 @@ void vim_r::takeActionNormal(int ch)
 		if (ch==83+256)
 		{
 			// del key
-			int currentLineLen=size(this->cp.linePos->line);
-			if (this->cp.charPos>=currentLineLen)
-				this->cp.charPos=currentLineLen-1;
-			// delete the character under the cursor
-			if (currentLineLen!=0)
-			{
-				this->cp.linePos->line.erase(this->cp.charPos, 1);
-				this->changed=true;
-			}
-			else
-				this->cp.charPos=0;
-			if (this->cp.charPos==currentLineLen-1 && currentLineLen!=1)
-				this->cp.charPos--;
+			this->takeActionNormal((int)'x');
 		}
 	}
 }
@@ -168,15 +172,15 @@ void vim_r::takeActionInsert(int ch)
 		{
 			this->changed=true;
 			// create a new line
+			this->cp.moveCursor(INSERT, NONE);
 			int currentLineLen=size(this->cp.linePos->line);
-			int currentCol=this->cp.charPos>currentLineLen ? currentLineLen : this->cp.charPos;
 			string newline;
-			if (currentCol==currentLineLen)
+			if (this->cp.charPos==currentLineLen)
 				newline="";
 			else
 			{
-				newline=this->cp.linePos->line.substr(currentCol);
-				this->cp.linePos->line=this->cp.linePos->line.substr(0, currentCol);
+				newline=this->cp.linePos->line.substr(this->cp.charPos);
+				this->cp.linePos->line=this->cp.linePos->line.substr(0, this->cp.charPos);
 			}
 			fileContent *temp=new fileContent(newline);
 			temp->next=this->cp.linePos->next;
@@ -192,13 +196,13 @@ void vim_r::takeActionInsert(int ch)
 		else if ((char)ch=='\b')
 		{
 			// delete a character
+			this->cp.moveCursor(INSERT, NONE);
 			int currentLineLen=size(this->cp.linePos->line);
-			int currentCol=this->cp.charPos>currentLineLen ? currentLineLen : this->cp.charPos;
-			if (currentCol!=0) // if the cursor is not at the front of this line, just delete a char
+			if (this->cp.charPos!=0) // if the cursor is not at the front of this line, just delete a char
 			{
 				this->changed=true;
-				this->cp.linePos->line.erase(currentCol-1, 1);
-				this->cp.charPos=currentCol-1;
+				this->cp.moveCursor(INSERT, LEFT);
+				this->cp.linePos->line.erase(this->cp.charPos, 1);
 			}
 			else
 			{
@@ -220,25 +224,20 @@ void vim_r::takeActionInsert(int ch)
 		{
 			// esc key
 			this->m=NORMAL;
-			int currentLineLen=size(this->cp.linePos->line);
-			if (this->cp.charPos>=currentLineLen)
-				this->cp.charPos=currentLineLen-1;
-			else if (this->cp.charPos!=0)
-				this->cp.charPos--;
+			this->cp.moveCursor(INSERT, LEFT);
 		}
 		else
 		{
 			// all other chars
 			// just insert char(ch)
 			this->changed=true;
+			this->cp.moveCursor(INSERT, NONE);
 			int currentLineLen=size(this->cp.linePos->line);
-			if (this->cp.charPos>currentLineLen)
-				this->cp.charPos=currentLineLen;
 			if (this->cp.charPos==currentLineLen) // cursor at the end of the line
 				this->cp.linePos->line+=(char)ch;
 			else
 				this->cp.linePos->line.insert(this->cp.charPos, 1, (char)ch);
-			this->cp.charPos++;
+			this->cp.moveCursor(INSERT, RIGHT);
 		}
 	}
 	else

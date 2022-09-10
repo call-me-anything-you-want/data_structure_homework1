@@ -5,36 +5,83 @@ cursorPos::cursorPos()
 	this->charPos=0;
 }
 
-void cursorPos::moveUp()
+cursorPos::cursorPos(const cursorPos &c)
 {
-	if (this->linePos==nullptr)
-		return;
-	this->linePos=this->linePos->prev==nullptr ? this->linePos : this->linePos->prev;
+	this->linePos=c.linePos;
+	this->charPos=c.charPos;
 }
 
-void cursorPos::moveDown()
+void cursorPos::moveCursor(mode m, direction d)
 {
-	if (this->linePos==nullptr)
-		return;
-	this->linePos=this->linePos->next==nullptr ? this->linePos : this->linePos->next;
-}
-
-void cursorPos::moveRight()
-{
-	int lineLen=size(this->linePos->line);
-	if (lineLen==0)
-		this->charPos=0;
-	else if (this->charPos>=lineLen-1)
-		this->charPos=lineLen-1;
-	else
-		this->charPos=this->charPos+1;
-}
-void cursorPos::moveLeft()
-{
-	int lineLen=size(this->linePos->line);
-	if (lineLen==0)
-		this->charPos=0;
-	else if (this->charPos>=lineLen)
-		this->charPos=lineLen-1;
-	this->charPos=this->charPos==0 ? 0 : this->charPos-1;
+	if (m==NORMAL)
+	{
+		if (d==UP)
+		{
+			if (this->linePos==nullptr)
+				return;
+			this->linePos=this->linePos->prev==nullptr ? this->linePos : this->linePos->prev;
+		}
+		else if (d==DOWN)
+		{
+			if (this->linePos==nullptr)
+				return;
+			this->linePos=this->linePos->next==nullptr ? this->linePos : this->linePos->next;
+		}
+		else if (d==RIGHT)
+		{
+			int lineLen=size(this->linePos->line);
+			if (lineLen==0)
+				this->charPos=0;
+			else if (this->charPos>=lineLen-1)
+				this->charPos=lineLen-1;
+			else
+				this->charPos=this->charPos+1;
+		}
+		else if (d==LEFT)
+		{
+			int lineLen=size(this->linePos->line);
+			if (lineLen==0)
+				this->charPos=0;
+			else if (this->charPos>=lineLen)
+				this->charPos=lineLen-1;
+			this->charPos=this->charPos==0 ? 0 : this->charPos-1;
+		}
+		else if (d==NONE)
+		{
+			int currentLineLen=size(this->linePos->line);
+			if (currentLineLen==0)
+				this->charPos=0;
+			else if (this->charPos>=currentLineLen)
+				this->charPos=currentLineLen-1;
+		}
+	}
+	else if (m==INSERT)
+	{
+		if (d==RIGHT)
+		{
+			int lineLen=size(this->linePos->line);
+			if (lineLen==0)
+				this->charPos=0;
+			else if (this->charPos>=lineLen)
+				this->charPos=lineLen;
+			else
+				this->charPos=this->charPos+1;
+		}
+		else if (d==LEFT)
+		{
+			int lineLen=size(this->linePos->line);
+			if (lineLen==0)
+				this->charPos=0;
+			else if (this->charPos>lineLen)
+				this->charPos=lineLen-1;
+			else
+				this->charPos=this->charPos==0 ? 0 : this->charPos-1;
+		}
+		else if (d==NONE)
+		{
+			int currentLineLen=size(this->linePos->line);
+			if (this->charPos>currentLineLen)
+				this->charPos=currentLineLen;
+		}
+	}
 }
