@@ -5,6 +5,7 @@
 #include<conio.h>
 #include<vector>
 #include<Windows.h>
+#define KEY_DOWN(vKey) ((GetAsyncKeyState(vKey) & 0x8000) ? 1 : 0)
 using namespace std;
 vim_r::vim_r(char *filename) : cp(), changed(false), clipBoard(nullptr)
 {
@@ -59,18 +60,16 @@ vim_r::vim_r(char *filename) : cp(), changed(false), clipBoard(nullptr)
 void vim_r::run()
 {
 	// 双缓冲变量
-	HANDLE hOutBuffer1, hOutBuffer2;
-	COORD coord = { 0,0 };
-	DWORD bytes = 0;
+	HANDLE hOutBuffer[2];
 	//缓冲区初始化
-	hOutBuffer1 = CreateConsoleScreenBuffer(
+	hOutBuffer[0] = CreateConsoleScreenBuffer(
 			GENERIC_WRITE,//定义进程可以往缓冲区写数据
 			FILE_SHARE_WRITE,//定义缓冲区可以共享写入权限
 			NULL,
 			CONSOLE_TEXTMODE_BUFFER,
 			NULL
 			);
-	hOutBuffer2 = CreateConsoleScreenBuffer(
+	hOutBuffer[1] = CreateConsoleScreenBuffer(
 			GENERIC_WRITE,
 			FILE_SHARE_WRITE,
 			NULL,
@@ -81,10 +80,10 @@ void vim_r::run()
 	CONSOLE_CURSOR_INFO cci;
 	cci.bVisible = 0;
 	cci.dwSize = 1;
-	SetConsoleCursorInfo(hOutBuffer1, &cci);
-	SetConsoleCursorInfo(hOutBuffer2, &cci);
-	int activeBuffer=1;
-	while(1)
+	SetConsoleCursorInfo(hOutBuffer[0], &cci);
+	SetConsoleCursorInfo(hOutBuffer[1], &cci);
+	int activeBuffer=0;
+	for (;;)
 	{
 		if (_kbhit())
 		{
@@ -98,42 +97,46 @@ void vim_r::run()
 				this->takeAction((int)ch+256);
 			}
 		}
+		if (KEY_DOWN(13))
+		{
+			// the enter key
+			this->takeAction((int)'\n');
+		}
 		// use 2 buffers to solve the current flash
-		if (activeBuffer==1)
-		{
-			//输出
-			fileContent *temp=this->ft;
-			coord.Y=0;
-			while (temp!=nullptr)
-			{
-				char *temp2=new char[temp->line.size()+1];
-				strcpy(temp2, temp->line.c_str());
-				WriteConsoleOutputCharacterA(hOutBuffer1, temp2, ft->line.size(), coord, &bytes);
-				delete [] temp2;
-				temp=temp->next;
-				coord.Y++;
-			}
-			SetConsoleActiveScreenBuffer(hOutBuffer1);//设置新的缓冲区为活动显示缓冲
-		}
-		else
-		{
-			//输出
-			fileContent *temp=this->ft;
-			coord.Y=0;
-			while (temp!=nullptr)
-			{
-				char *temp2=new char[temp->line.size()+1];
-				strcpy(temp2, temp->line.c_str());
-				WriteConsoleOutputCharacterA(hOutBuffer2, temp2, ft->line.size(), coord, &bytes);
-				delete [] temp2;
-				temp=temp->next;
-				coord.Y++;
-			}
-			SetConsoleActiveScreenBuffer(hOutBuffer2);//设置新的缓冲区为活动显示缓冲
-		}
-		activeBuffer=3-activeBuffer;
+		this->display(hOutBuffer, activeBuffer);
+		activeBuffer=(activeBuffer+1)%2;
 	}
 }
+
+void vim_r::display(HANDLE *hOutBuffer, int activeBuffer)
+{
+	COORD coord = { 0,0 };
+	DWORD bytes = 0;
+	WriteConsoleOutputCharacterA(hOutBuffer[activeBuffer], this->filename.data(), this->filename.size(), coord, &bytes);
+	coord.Y+=2;
+	fileContent *temp=this->ft;
+	while (temp!=nullptr)
+	{
+		WriteConsoleOutputCharacterA(hOutBuffer[activeBuffer], temp->line.data(), temp->line.size(), coord, &bytes);
+		temp=temp->next;
+		coord.Y++;
+	}
+	coord.Y++;
+	string currentMode;
+	if (this->m==NORMAL)
+		currentMode="--NORMAL--";
+	else if (this->m==INSERT)
+		currentMode="--INSERT--";
+	else if (this->m==VISUAL)
+		currentMode="--VISUAL--";
+	else if (this->m==EX)
+		currentMode="--COMMAND--";
+	WriteConsoleOutputCharacterA(hOutBuffer[activeBuffer], currentMode.data(), currentMode.size(), coord, &bytes);
+	coord.Y++;
+	WriteConsoleOutputCharacterA(hOutBuffer[activeBuffer], this->message.data(), this->message.size(), coord, &bytes);
+	SetConsoleActiveScreenBuffer(hOutBuffer[activeBuffer]);//设置新的缓冲区为活动显示缓冲
+}
+
 
 void vim_r::takeAction(int ch)
 {
