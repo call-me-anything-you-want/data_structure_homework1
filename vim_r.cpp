@@ -242,6 +242,8 @@ void vim_r::takeActionNormal(int ch)
 					pasteContent->prev->next=pasteContent;
 				if (pasteTail->next!=nullptr)
 					pasteTail->next->prev=pasteTail;
+				if (this->ft==this->cp.linePos)
+					this->ft=pasteContent;
 				delete this->cp.linePos;
 				this->cp.linePos=pasteContent;
 				this->cp.moveCursor(NORMAL, RIGHT);
