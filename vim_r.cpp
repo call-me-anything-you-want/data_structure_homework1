@@ -120,7 +120,17 @@ void vim_r::display(HANDLE *hOutBuffer, int count)
 	{
 		string currentLine=temp->line;
 		if (temp==this->cp.linePos && count<7)
-			currentLine=currentLine+"█";
+		{
+			if (this->m==NORMAL)
+			{
+				if (currentLine.size()==0)
+					currentLine= "█";
+				else if (this->cp.charPos>=currentLine.size())
+					currentLine.replace(currentLine.size()-1, 1, "█");
+				else
+					currentLine.replace(this->cp.charPos, 1,  "█");
+			}
+		}
 		WriteConsoleOutputCharacter(hOutBuffer[activeBuffer], currentLine.data(), currentLine.size(), coord, &bytes);
 		temp=temp->next;
 		coord.Y++;
