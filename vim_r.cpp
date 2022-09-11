@@ -104,7 +104,7 @@ void vim_r::run()
 		}
 		// use 2 buffers to solve the current flash
 		this->display(hOutBuffer, count);
-		count=(count+1)%2;
+		count=(count+1)%14;
 	}
 }
 
@@ -113,15 +113,15 @@ void vim_r::display(HANDLE *hOutBuffer, int count)
 	int activeBuffer=count%2;
 	COORD coord = { 0,0 };
 	DWORD bytes = 0;
-	WriteConsoleOutputCharacterA(hOutBuffer[activeBuffer], this->filename.data(), this->filename.size(), coord, &bytes);
+	WriteConsoleOutputCharacter(hOutBuffer[activeBuffer], this->filename.data(), this->filename.size(), coord, &bytes);
 	coord.Y+=2;
 	fileContent *temp=this->ft;
 	while (temp!=nullptr)
 	{
 		string currentLine=temp->line;
-		if (temp==this->cp.linePos && count<1)
+		if (temp==this->cp.linePos && count<7)
 			currentLine=currentLine+"█";
-		WriteConsoleOutputCharacterA(hOutBuffer[activeBuffer], currentLine.data(), currentLine.size(), coord, &bytes);
+		WriteConsoleOutputCharacter(hOutBuffer[activeBuffer], currentLine.data(), currentLine.size(), coord, &bytes);
 		temp=temp->next;
 		coord.Y++;
 	}
@@ -135,10 +135,26 @@ void vim_r::display(HANDLE *hOutBuffer, int count)
 		currentMode="--VISUAL--";
 	else if (this->m==EX)
 		currentMode="--COMMAND--";
-	WriteConsoleOutputCharacterA(hOutBuffer[activeBuffer], currentMode.data(), currentMode.size(), coord, &bytes);
+	WriteConsoleOutputCharacter(hOutBuffer[activeBuffer], currentMode.data(), currentMode.size(), coord, &bytes);
 	coord.Y++;
-	WriteConsoleOutputCharacterA(hOutBuffer[activeBuffer], this->message.data(), this->message.size(), coord, &bytes);
+	WriteConsoleOutputCharacter(hOutBuffer[activeBuffer], this->message.data(), this->message.size(), coord, &bytes);
 	SetConsoleActiveScreenBuffer(hOutBuffer[activeBuffer]);//设置新的缓冲区为活动显示缓冲
+	Sleep(50);
+
+	int nextHandleIndex=(activeBuffer+1)%2;
+	CloseHandle(hOutBuffer[nextHandleIndex]);
+	hOutBuffer[nextHandleIndex] = CreateConsoleScreenBuffer(
+			GENERIC_WRITE,
+			FILE_SHARE_WRITE,
+			NULL,
+			CONSOLE_TEXTMODE_BUFFER,
+			NULL
+			);
+	//选择隐藏缓冲区光标可见性
+	CONSOLE_CURSOR_INFO cci;
+	cci.bVisible = 0;
+	cci.dwSize = 1;
+	SetConsoleCursorInfo(hOutBuffer[nextHandleIndex], &cci);
 }
 
 void vim_r::takeAction(int ch)
