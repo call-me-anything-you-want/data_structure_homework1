@@ -5,7 +5,6 @@
 #include<conio.h>
 #include<vector>
 #include<Windows.h>
-#define KEY_DOWN(vKey) ((GetAsyncKeyState(vKey) & 0x8000) ? 1 : 0)
 using namespace std;
 vim_r::vim_r(char *filename) : cp(), changed(false), clipBoard(nullptr)
 {
@@ -109,6 +108,11 @@ void vim_r::display(HANDLE *hOutBuffer, int count)
 	COORD coord = { 0,0 };
 	DWORD bytes = 0;
 	WriteConsoleOutputCharacter(hOutBuffer[activeBuffer], this->filename.data(), this->filename.size(), coord, &bytes);
+	coord.Y+=1;
+	if (this->changed)
+		WriteConsoleOutputCharacter(hOutBuffer[activeBuffer], "changed", 7, coord, &bytes);
+	else
+		WriteConsoleOutputCharacter(hOutBuffer[activeBuffer], "unchanged", 9, coord, &bytes);
 	coord.Y+=2;
 	fileContent *temp=this->ft;
 	while (temp!=nullptr)
@@ -125,7 +129,7 @@ void vim_r::display(HANDLE *hOutBuffer, int count)
 				else
 					currentLine.replace(this->cp.charPos, 1,  "█");
 			}
-			else if (this->m==INSERT)
+			else if (this->m==INSERT || this->m==REPLACE)
 			{
 				if (currentLine.size()==0)
 					currentLine= "▁";
@@ -149,6 +153,8 @@ void vim_r::display(HANDLE *hOutBuffer, int count)
 		currentMode="--VISUAL--";
 	else if (this->m==EX)
 		currentMode="--COMMAND--";
+	else if (this->m==REPLACE)
+		currentMode="--REPLACE--";
 	WriteConsoleOutputCharacter(hOutBuffer[activeBuffer], currentMode.data(), currentMode.size(), coord, &bytes);
 	coord.Y++;
 	WriteConsoleOutputCharacter(hOutBuffer[activeBuffer], this->message.data(), this->message.size(), coord, &bytes);
@@ -181,6 +187,8 @@ void vim_r::takeAction(int ch)
 		takeActionEx(ch);
 	else if (this->m==VISUAL)
 		takeActionVisual(ch);
+	else if (this->m==REPLACE)
+		takeActionReplace(ch);
 }
 
 void vim_r::takeActionNormal(int ch)
@@ -273,6 +281,11 @@ void vim_r::takeActionNormal(int ch)
 			else
 				this->cp.moveCursor(INSERT, RIGHT);
 		}
+		else if ((char)ch=='R')
+		{
+			this->m=REPLACE;
+			this->cp.moveCursor(NORMAL, NONE);
+		}
 		else if ((char)ch=='v')
 		{
 			// enter visual mode
@@ -326,7 +339,7 @@ void vim_r::takeActionInsert(int ch)
 		}
 		else if ((char)ch=='\b')
 		{
-			// delete a character
+			// delete a character before the cursor
 			this->cp.moveCursor(INSERT, NONE);
 			int currentLineLen=this->cp.linePos->line.size();
 			if (this->cp.charPos!=0) // if the cursor is not at the front of this line, just delete a char
@@ -376,7 +389,14 @@ void vim_r::takeActionInsert(int ch)
 		if (ch==83+256)
 		{
 			// del key
-			this->takeActionInsert('\b');
+			// delete a character under the cursor
+			this->cp.moveCursor(INSERT, NONE);
+			int currentLineLen=this->cp.linePos->line.size();
+			if (this->cp.charPos<currentLineLen)
+			{
+				this->changed=true;
+				this->cp.linePos->line.erase(this->cp.charPos, 1);
+			}
 		}
 		else if (ch==72+256 || ch==80+256 || ch==75+256 || ch==77+256)
 		{
@@ -545,4 +565,41 @@ void vim_r::takeActionVisual(int ch)
 	}
 	else
 	{}
+}
+
+
+void vim_r::takeActionReplace(int ch)
+{
+	if (ch<=127)
+	{
+		if (ch==8)
+		{
+			// BS
+			this->cp.moveCursor(REPLACE, LEFT);
+		}
+		else if (ch==27)
+		{
+			// esc
+			this->m=NORMAL;
+			this->cp.moveCursor(NORMAL, NONE);
+		}
+		else
+		{
+			this->changed=true;
+			int currentLineLen=this->cp.linePos->line.size();
+			if (this->cp.charPos>=currentLineLen)
+				this->cp.linePos->line+=(char)ch;
+			else
+				this->cp.linePos->line[this->cp.charPos]=(char)ch;
+			this->cp.moveCursor(REPLACE, RIGHT);
+		}
+	}
+	else
+	{
+		if (ch==83+256)
+		{
+			// del
+			this->takeActionInsert(83+256);
+		}
+	}
 }

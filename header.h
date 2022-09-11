@@ -2,7 +2,7 @@
 #define HEADER
 #include<string>
 #include<Windows.h>
-enum mode {NORMAL, INSERT, EX, VISUAL};
+enum mode {NORMAL, INSERT, EX, VISUAL, REPLACE};
 enum direction {UP, DOWN, LEFT, RIGHT, NONE};
 const int displayRowNum=10;
 const int displayColNum=20;
@@ -47,6 +47,7 @@ class vim_r
 		void takeActionVisual(int ch);
 		void takeActionEx(int ch); // this one deal with key input
 		void takeActionEX(std::string message); // this one deal with line input
+		void takeActionReplace(int ch);
 		void display(HANDLE *hOutBuffer, int activeBuffer);
 };
 #endif

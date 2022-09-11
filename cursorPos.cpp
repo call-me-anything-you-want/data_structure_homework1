@@ -118,4 +118,27 @@ void cursorPos::moveCursor(mode m, direction d)
 			this->charPos=this->charPos==0 ? 0 : this->charPos-1;
 		}
 	}
+	else if (m==REPLACE)
+	{
+		if (d==RIGHT)
+		{
+			int lineLen=this->linePos->line.size();
+			if (lineLen==0)
+				this->charPos=0;
+			else if (this->charPos>=lineLen)
+				this->charPos=lineLen;
+			else
+				this->charPos=this->charPos+1;
+		}
+		else if (d==LEFT)
+		{
+			int lineLen=this->linePos->line.size();
+			if (lineLen==0)
+				this->charPos=0;
+			else if (this->charPos>lineLen)
+				this->charPos=lineLen-1;
+			else
+				this->charPos=this->charPos==0 ? 0 : this->charPos-1;
+		}
+	}
 }
