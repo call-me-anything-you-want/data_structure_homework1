@@ -82,7 +82,7 @@ void vim_r::run()
 	cci.dwSize = 1;
 	SetConsoleCursorInfo(hOutBuffer[0], &cci);
 	SetConsoleCursorInfo(hOutBuffer[1], &cci);
-	int activeBuffer=0;
+	int count=0;
 	for (;;)
 	{
 		if (_kbhit())
@@ -103,13 +103,14 @@ void vim_r::run()
 			this->takeAction((int)'\n');
 		}
 		// use 2 buffers to solve the current flash
-		this->display(hOutBuffer, activeBuffer);
-		activeBuffer=(activeBuffer+1)%2;
+		this->display(hOutBuffer, count);
+		count=(count+1)%2;
 	}
 }
 
-void vim_r::display(HANDLE *hOutBuffer, int activeBuffer)
+void vim_r::display(HANDLE *hOutBuffer, int count)
 {
+	int activeBuffer=count%2;
 	COORD coord = { 0,0 };
 	DWORD bytes = 0;
 	WriteConsoleOutputCharacterA(hOutBuffer[activeBuffer], this->filename.data(), this->filename.size(), coord, &bytes);
@@ -117,7 +118,10 @@ void vim_r::display(HANDLE *hOutBuffer, int activeBuffer)
 	fileContent *temp=this->ft;
 	while (temp!=nullptr)
 	{
-		WriteConsoleOutputCharacterA(hOutBuffer[activeBuffer], temp->line.data(), temp->line.size(), coord, &bytes);
+		string currentLine=temp->line;
+		if (temp==this->cp.linePos && count<1)
+			currentLine=currentLine+"█";
+		WriteConsoleOutputCharacterA(hOutBuffer[activeBuffer], currentLine.data(), currentLine.size(), coord, &bytes);
 		temp=temp->next;
 		coord.Y++;
 	}
@@ -136,7 +140,6 @@ void vim_r::display(HANDLE *hOutBuffer, int activeBuffer)
 	WriteConsoleOutputCharacterA(hOutBuffer[activeBuffer], this->message.data(), this->message.size(), coord, &bytes);
 	SetConsoleActiveScreenBuffer(hOutBuffer[activeBuffer]);//设置新的缓冲区为活动显示缓冲
 }
-
 
 void vim_r::takeAction(int ch)
 {
