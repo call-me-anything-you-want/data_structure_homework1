@@ -506,7 +506,7 @@ void vim_r::takeActionEX(string EXmessage)
 			}
 			fout.close();
 			this->filename=EXmessage;
-			this->message=this->filename+"has been written.";
+			this->message=this->filename+" has been written.";
 			this->changed=false;
 		}
 	}
