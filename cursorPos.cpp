@@ -117,6 +117,12 @@ void cursorPos::moveCursor(mode m, direction d)
 				this->charPos=lineLen;
 			this->charPos=this->charPos==0 ? 0 : this->charPos-1;
 		}
+		else if (d==NONE)
+		{
+			int currentLineLen=this->linePos->line.size();
+			if (this->charPos>currentLineLen)
+				this->charPos=currentLineLen;
+		}
 	}
 	else if (m==REPLACE)
 	{

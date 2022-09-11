@@ -6,7 +6,7 @@
 #include<vector>
 #include<Windows.h>
 using namespace std;
-vim_r::vim_r(char *filename) : cp(), changed(false), clipBoard(nullptr)
+vim_r::vim_r(char *filename) : cp(), changed(false), currentCursorAhead(false), clipBoard(nullptr)
 {
 	if (filename==nullptr)
 		this->filename="";
@@ -137,6 +137,27 @@ void vim_r::display(HANDLE *hOutBuffer, int count)
 					currentLine+= "▁";
 				else
 					currentLine.replace(this->cp.charPos, 1,  "▁");
+			}
+			else if (this->m==VISUAL)
+			{
+				if (currentLine.size()==0)
+					currentLine= "█";
+				else if (this->cp.charPos>=currentLine.size())
+					currentLine+= "█";
+				else
+					currentLine.replace(this->cp.charPos, 1,  "█");
+			}
+		}
+		if (temp==this->visualCursor.linePos)
+		{
+			if (this->m==VISUAL)
+			{
+				if (currentLine.size()==0)
+					currentLine= "█";
+				else if (this->cp.charPos>=currentLine.size())
+					currentLine+= "█";
+				else
+					currentLine.replace(this->cp.charPos, 1,  "█");
 			}
 		}
 		WriteConsoleOutputCharacter(hOutBuffer[activeBuffer], currentLine.data(), currentLine.size(), coord, &bytes);
@@ -289,8 +310,10 @@ void vim_r::takeActionNormal(int ch)
 		else if ((char)ch=='v')
 		{
 			// enter visual mode
+			this->cp.moveCursor(NORMAL, NONE);
 			this->m=VISUAL;
 			this->visualCursor=this->cp;
+			this->currentCursorAhead=false;
 		}
 		else if ((char)ch==':')
 		{
@@ -555,16 +578,196 @@ void vim_r::takeActionVisual(int ch)
 	if (ch<=127)
 	{
 		if ((char)ch=='h')
+		{
 			this->cp.moveCursor(VISUAL, LEFT);
+			if (this->currentCursorAhead==false && this->cp.linePos==this->visualCursor.linePos && this->cp.charPos<this->visualCursor.charPos)
+				this->currentCursorAhead=true;
+		}
 		else if ((char)ch=='j')
+		{
 			this->cp.moveCursor(VISUAL, DOWN);
+			if (this->currentCursorAhead==true && this->cp.linePos==this->visualCursor.linePos->next)
+				currentCursorAhead=false;
+			else if (this->currentCursorAhead==true && this->cp.linePos==this->visualCursor.linePos && this->cp.charPos>=this->visualCursor.charPos)
+				currentCursorAhead=false;
+		}
 		else if ((char)ch=='k')
+		{
 			this->cp.moveCursor(VISUAL, UP);
+			if (this->currentCursorAhead==false && this->cp.linePos==this->visualCursor.linePos->prev)
+				currentCursorAhead=true;
+			else if (this->currentCursorAhead==false && this->cp.linePos==this->visualCursor.linePos && this->cp.charPos<this->visualCursor.charPos)
+				currentCursorAhead=true;
+		}
 		else if ((char)ch=='l')
+		{
 			this->cp.moveCursor(VISUAL, RIGHT);
+			if (this->currentCursorAhead==true && this->cp.linePos==this->visualCursor.linePos && this->cp.charPos>=this->visualCursor.charPos)
+				this->currentCursorAhead=false;
+		}
+		else if ((char)ch=='d')
+		{
+			// delete
+			this->takeActionVisual((int)'y');
+			cursorPos beg, end;
+			if (this->currentCursorAhead)
+			{
+				beg.charPos=this->cp.charPos;
+				beg.linePos=this->cp.linePos;
+				end.charPos=this->visualCursor.charPos;
+				end.linePos=this->visualCursor.linePos;
+			}
+			else
+			{
+				beg.charPos=this->visualCursor.charPos;
+				beg.linePos=this->visualCursor.linePos;
+				end.charPos=this->cp.charPos;
+				end.linePos=this->cp.linePos;
+			}
+			if (beg.linePos==end.linePos)
+			{
+				int currentLineLen=beg.linePos->line.size();
+				if (beg.charPos!=currentLineLen)
+				{
+					beg.linePos->line.erase(beg.charPos, end.charPos-beg.charPos+1);
+					this->changed=true;
+				}
+				if (end.charPos==currentLineLen)
+				{
+					if (beg.linePos->next!=nullptr)
+					{
+						beg.linePos->line+=beg.linePos->next->line;
+						fileContent *temp=beg.linePos->next;
+						beg.linePos->next=beg.linePos->next->next;
+						delete temp;
+						if (beg.linePos->next!=nullptr)
+							beg.linePos->next->prev=beg.linePos;
+						this->changed=true;
+					}
+				}
+			}
+			else
+			{
+				int begLineLen=beg.linePos->line.size();
+				if (beg.charPos!=begLineLen)
+					beg.linePos->line.erase(beg.charPos);
+				fileContent *temp=beg.linePos->next;
+				while (temp!=end.linePos)
+				{
+					temp->prev->next=temp->next;
+					temp->next->prev=temp->prev;
+					fileContent *deleting=temp;
+					temp=temp->next;
+					delete deleting;
+				}
+				int endLineLen=end.linePos->line.size();
+				end.linePos->line=end.linePos->line.erase(0, end.charPos+1);
+				if (end.charPos==endLineLen)
+				{
+					if (end.linePos->next!=nullptr)
+					{
+						end.linePos->line+=end.linePos->next->line;
+						fileContent *deleting=end.linePos->next;
+						end.linePos->next=deleting->next;
+						if (end.linePos->next!=nullptr)
+							end.linePos->next->prev=end.linePos;
+						delete deleting;
+					}
+				}
+				if (beg.charPos==begLineLen)
+				{
+					beg.linePos->line+=end.linePos->line;
+					beg.linePos->next=end.linePos->next;
+					if (beg.linePos->next!=nullptr)
+						beg.linePos->next->prev=beg.linePos;
+					delete end.linePos;
+				}
+			}
+			this->cp.linePos=beg.linePos;
+			this->cp.charPos=beg.charPos;
+			this->cp.moveCursor(NORMAL, NONE);
+			this->m=NORMAL;
+		}
+		else if ((char)ch=='x')
+			this->takeActionVisual((int)'d');
+		else if ((char)ch=='y')
+		{
+			// yank
+			cursorPos beg, end;
+			if (this->currentCursorAhead)
+			{
+				beg.charPos=this->cp.charPos;
+				beg.linePos=this->cp.linePos;
+				beg.moveCursor(VISUAL, NONE);
+				end.charPos=this->visualCursor.charPos;
+				end.linePos=this->visualCursor.linePos;
+				end.moveCursor(VISUAL, NONE);
+			}
+			else
+			{
+				beg.charPos=this->visualCursor.charPos;
+				beg.linePos=this->visualCursor.linePos;
+				beg.moveCursor(VISUAL, NONE);
+				end.charPos=this->cp.charPos;
+				end.linePos=this->cp.linePos;
+				end.moveCursor(VISUAL, NONE);
+			}
+			deleteAll(this->clipBoard);
+			fileContent *tail;
+			if (beg.linePos==end.linePos)
+			{
+				int currentLineLen=beg.linePos->line.size();
+				if (beg.charPos==currentLineLen)
+					this->clipBoard=new fileContent();
+				else
+					this->clipBoard=new fileContent(beg.linePos->line.substr(beg.charPos, end.charPos-beg.charPos+1));
+				tail=this->clipBoard;
+			}
+			else
+			{
+				int currentLineLen=beg.linePos->line.size();
+				if (beg.charPos==currentLineLen)
+					this->clipBoard=new fileContent();
+				else
+					this->clipBoard=new fileContent(beg.linePos->line.substr(beg.charPos));
+				beg.linePos=beg.linePos->next;
+				tail=this->clipBoard;
+				while (beg.linePos!=end.linePos)
+				{
+					tail->next=new fileContent(beg.linePos->line);
+					tail->next->prev=tail;
+					beg.linePos=beg.linePos->next;
+					tail=tail->next;
+				}
+				tail->next=new fileContent(end.linePos->line.substr(0, end.charPos+1));
+				tail->next->prev=tail;
+				tail=tail->next;
+			}
+			int endLineLen=end.linePos->line.size();
+			if (end.charPos==endLineLen)
+			{
+				tail->next=new fileContent();
+				tail->next->prev=tail;
+			}
+			// put the cursor to the front
+			this->cp.linePos=beg.linePos;
+			this->cp.charPos=beg.charPos;
+			this->m=NORMAL;
+		}
+		else if (ch==27)
+		{
+			// esc
+			this->m=NORMAL;
+		}
 	}
 	else
-	{}
+	{
+		if (ch==83+256)
+		{
+			// del key
+			this->takeActionVisual((int)'d');
+		}
+	}
 }
 
 

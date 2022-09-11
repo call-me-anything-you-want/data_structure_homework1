@@ -38,6 +38,7 @@ class vim_r
 		cursorPos visualCursor; // visual mode nees 2 cursors, one is the current cursor, the other is stored in visualCursor
 		mode m; // records current mode
 		bool changed; // true if the file is changed
+		bool currentCursorAhead; // true if the current cursor is before the visualCursor
 		std::string message; // record the message needs to be displayed at the bottom, including input command in EX mode
 		vim_r(char * filename);
 		void run();
