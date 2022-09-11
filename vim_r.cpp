@@ -97,11 +97,6 @@ void vim_r::run()
 				this->takeAction((int)ch+256);
 			}
 		}
-		if (KEY_DOWN(13))
-		{
-			// the enter key
-			this->takeAction((int)'\n');
-		}
 		// use 2 buffers to solve the current flash
 		this->display(hOutBuffer, count);
 		count=(count+1)%14;
@@ -129,6 +124,15 @@ void vim_r::display(HANDLE *hOutBuffer, int count)
 					currentLine.replace(currentLine.size()-1, 1, "█");
 				else
 					currentLine.replace(this->cp.charPos, 1,  "█");
+			}
+			else if (this->m==INSERT)
+			{
+				if (currentLine.size()==0)
+					currentLine= "▁";
+				else if (this->cp.charPos>=currentLine.size())
+					currentLine+= "▁";
+				else
+					currentLine.replace(this->cp.charPos, 1,  "▁");
 			}
 		}
 		WriteConsoleOutputCharacter(hOutBuffer[activeBuffer], currentLine.data(), currentLine.size(), coord, &bytes);
@@ -293,7 +297,7 @@ void vim_r::takeActionInsert(int ch)
 {
 	if (ch<=127)
 	{
-		if ((char)ch=='\n')
+		if ((char)ch=='\r')
 		{
 			this->changed=true;
 			// create a new line
@@ -389,7 +393,7 @@ void vim_r::takeActionEx(int ch)
 {
 	if (ch<=127)
 	{
-		if ((char)ch=='\n')
+		if ((char)ch=='\r')
 		{
 			// deal with command
 			this->takeActionEX(this->message);
