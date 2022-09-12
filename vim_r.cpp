@@ -21,8 +21,8 @@ vim_r::vim_r(char *filename) : cp(), changed(false), currentCursorAhead(false), 
 		fin.open(filename, ios::in);
 		if (fin.fail())
 		{
-			this->message="can't open file "+string(filename)+".";
-			this->filename="";
+			this->filename=string(filename);
+			this->message="\"" + this->filename + "\" [new]";
 			this->ft=new fileContent();
 			this->cp.linePos=this->ft;
 		}
@@ -150,14 +150,29 @@ void vim_r::display(HANDLE *hOutBuffer, int count)
 		}
 		if (temp==this->visualCursor.linePos)
 		{
-			if (this->m==VISUAL)
+			if (this->cp.linePos!=temp || (this->cp.charPos!=this->visualCursor.charPos && (this->cp.charPos<=temp->line.size() || this->visualCursor.charPos<=temp->line.size())))
 			{
-				if (currentLine.size()==0)
-					currentLine= "█";
-				else if (this->cp.charPos>=currentLine.size())
-					currentLine+= "█";
-				else
-					currentLine.replace(this->cp.charPos, 1,  "█");
+				// only display this when the two cursor is not at the same position
+				if (this->m==VISUAL)
+				{
+					if (currentLine.size()==0)
+						currentLine= "█";
+					else if (this->cp.linePos!=temp || this->currentCursorAhead==false || count>=7)
+					{
+						// the two cursor is not in the same line or cp is behind the visualCursor or cp is not displayed
+						if (this->visualCursor.charPos>=currentLine.size())
+							currentLine+="█";
+						else
+							currentLine.replace(this->visualCursor.charPos, 1,  "█");
+					}
+					else
+					{
+						if (this->visualCursor.charPos>=currentLine.size()-2)
+							currentLine+="█";
+						else
+							currentLine.replace(this->visualCursor.charPos+2, 1, "█");
+					}
+				}
 			}
 		}
 		WriteConsoleOutputCharacter(hOutBuffer[activeBuffer], currentLine.data(), currentLine.size(), coord, &bytes);
@@ -276,6 +291,7 @@ void vim_r::takeActionNormal(int ch)
 				delete this->cp.linePos;
 				this->cp.linePos=pasteContent;
 				this->cp.moveCursor(NORMAL, RIGHT);
+				this->changed=true;
 			}
 		}
 		else if ((char)ch=='i')
@@ -608,7 +624,6 @@ void vim_r::takeActionVisual(int ch)
 		else if ((char)ch=='d')
 		{
 			// delete
-			this->takeActionVisual((int)'y');
 			cursorPos beg, end;
 			if (this->currentCursorAhead)
 			{
@@ -624,6 +639,7 @@ void vim_r::takeActionVisual(int ch)
 				end.charPos=this->cp.charPos;
 				end.linePos=this->cp.linePos;
 			}
+			this->takeActionVisual((int)'y');
 			if (beg.linePos==end.linePos)
 			{
 				int currentLineLen=beg.linePos->line.size();
@@ -674,14 +690,12 @@ void vim_r::takeActionVisual(int ch)
 						delete deleting;
 					}
 				}
-				if (beg.charPos==begLineLen)
-				{
-					beg.linePos->line+=end.linePos->line;
-					beg.linePos->next=end.linePos->next;
-					if (beg.linePos->next!=nullptr)
-						beg.linePos->next->prev=beg.linePos;
-					delete end.linePos;
-				}
+				beg.linePos->line+=end.linePos->line;
+				beg.linePos->next=end.linePos->next;
+				if (beg.linePos->next!=nullptr)
+					beg.linePos->next->prev=beg.linePos;
+				delete end.linePos;
+				this->changed=true;
 			}
 			this->cp.linePos=beg.linePos;
 			this->cp.charPos=beg.charPos;
@@ -730,13 +744,13 @@ void vim_r::takeActionVisual(int ch)
 					this->clipBoard=new fileContent();
 				else
 					this->clipBoard=new fileContent(beg.linePos->line.substr(beg.charPos));
-				beg.linePos=beg.linePos->next;
+				fileContent *temp=beg.linePos->next;
 				tail=this->clipBoard;
-				while (beg.linePos!=end.linePos)
+				while (temp!=end.linePos)
 				{
-					tail->next=new fileContent(beg.linePos->line);
+					tail->next=new fileContent(temp->line);
 					tail->next->prev=tail;
-					beg.linePos=beg.linePos->next;
+					temp=temp->next;
 					tail=tail->next;
 				}
 				tail->next=new fileContent(end.linePos->line.substr(0, end.charPos+1));
