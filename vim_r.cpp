@@ -6,7 +6,7 @@
 #include<vector>
 #include<Windows.h>
 using namespace std;
-vim_r::vim_r(char *filename) : cp(), changed(false), currentCursorAhead(false), clipBoard(nullptr)
+vim_r::vim_r(char *filename) : cp(), changed(false), currentCursorAhead(false), clipBoard(nullptr), historyEnvironment(vector<environment>()), currrentEnvironmentIndex(-1)
 {
 	if (filename==nullptr)
 		this->filename="";
@@ -54,6 +54,7 @@ vim_r::vim_r(char *filename) : cp(), changed(false), currentCursorAhead(false), 
 		this->cp.linePos=this->ft;
 	}
 	this->visualCursor=cursorPos(this->cp);
+	this->saveEnvironment();
 }
 
 void vim_r::run()
@@ -88,7 +89,9 @@ void vim_r::run()
 		{
 			char ch=_getch();
 			if (ch>0)
+			{
 				this->takeAction((int)ch);
+			}
 			else
 			{
 				// del, up, down, left, right, f1-f12
@@ -253,6 +256,7 @@ void vim_r::takeActionNormal(int ch)
 				// delete the char
 				this->cp.linePos->line.erase(this->cp.charPos, 1);
 				this->changed=true;
+				this->saveEnvironment();
 			}
 			else
 				this->cp.charPos=0;
@@ -292,6 +296,7 @@ void vim_r::takeActionNormal(int ch)
 				this->cp.linePos=pasteContent;
 				this->cp.moveCursor(NORMAL, RIGHT);
 				this->changed=true;
+				this->saveEnvironment();
 			}
 		}
 		else if ((char)ch=='i')
@@ -335,6 +340,22 @@ void vim_r::takeActionNormal(int ch)
 		{
 			this->m=EX;
 			this->message=":";
+		}
+		else if ((char)ch=='u')
+		{
+			// undo
+			if (this->currrentEnvironmentIndex==0)
+				this->message="Has been in the oldest change.";
+			else
+				this->loadEnvironment(this->currrentEnvironmentIndex-1);
+		}
+		else if (ch==18)
+		{
+			// ctrl-r, redo
+			if (this->currrentEnvironmentIndex==this->historyEnvironment.size()-1)
+				this->message="Has been in the latest change.";
+			else
+				this->loadEnvironment(this->currrentEnvironmentIndex+1);
 		}
 	}
 	else
@@ -408,6 +429,7 @@ void vim_r::takeActionInsert(int ch)
 			// esc key
 			this->m=NORMAL;
 			this->cp.moveCursor(INSERT, LEFT);
+			this->saveEnvironment();
 		}
 		else
 		{
@@ -567,6 +589,7 @@ void vim_r::takeActionEX(string EXmessage)
 			this->filename=EXmessage;
 			this->message=this->filename+" has been written.";
 			this->changed=false;
+			this->saveEnvironment();
 		}
 	}
 	else if(command=="q" || command=="quit")
@@ -701,6 +724,7 @@ void vim_r::takeActionVisual(int ch)
 			this->cp.charPos=beg.charPos;
 			this->cp.moveCursor(NORMAL, NONE);
 			this->m=NORMAL;
+			this->saveEnvironment();
 		}
 		else if ((char)ch=='x')
 			this->takeActionVisual((int)'d');
@@ -799,6 +823,7 @@ void vim_r::takeActionReplace(int ch)
 			// esc
 			this->m=NORMAL;
 			this->cp.moveCursor(NORMAL, NONE);
+			this->saveEnvironment();
 		}
 		else
 		{
@@ -819,4 +844,26 @@ void vim_r::takeActionReplace(int ch)
 			this->takeActionInsert(83+256);
 		}
 	}
+}
+
+void vim_r::saveEnvironment()
+{
+	while (this->currrentEnvironmentIndex!=this->historyEnvironment.size()-1)
+		this->historyEnvironment.pop_back();
+	environment e;
+	this->historyEnvironment.push_back(e);
+	this->currrentEnvironmentIndex++;
+	this->historyEnvironment[this->currrentEnvironmentIndex].changed=this->changed;
+	this->historyEnvironment[this->currrentEnvironmentIndex].ft=copyAll(this->ft);
+}
+
+void vim_r::loadEnvironment(int index)
+{
+	this->currrentEnvironmentIndex=index;
+	this->changed=this->historyEnvironment[index].changed;
+	deleteAll(this->ft);
+	this->ft=copyAll(this->historyEnvironment[index].ft);
+	this->cp.linePos=this->ft;
+	this->cp.charPos=0;
+	this->m=NORMAL;
 }

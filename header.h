@@ -2,10 +2,9 @@
 #define HEADER
 #include<string>
 #include<Windows.h>
+#include<vector>
 enum mode {NORMAL, INSERT, EX, VISUAL, REPLACE};
 enum direction {UP, DOWN, LEFT, RIGHT, NONE};
-const int displayRowNum=10;
-const int displayColNum=20;
 class fileContent
 {
 	public:
@@ -28,6 +27,15 @@ class cursorPos
 		fileContent *linePos;
 		int charPos;
 };
+class environment
+{
+	public:
+		fileContent *ft;
+		bool changed;
+		environment();
+		environment(const environment &e);
+		~environment();
+};
 class vim_r
 {
 	public:
@@ -40,6 +48,8 @@ class vim_r
 		bool changed; // true if the file is changed
 		bool currentCursorAhead; // true if the current cursor is before the visualCursor
 		std::string message; // record the message needs to be displayed at the bottom, including input command in EX mode
+		std::vector<environment> historyEnvironment;
+		int currrentEnvironmentIndex;
 		vim_r(char * filename);
 		void run();
 		void takeAction(int ch);
@@ -50,5 +60,7 @@ class vim_r
 		void takeActionEX(std::string message); // this one deal with line input
 		void takeActionReplace(int ch);
 		void display(HANDLE *hOutBuffer, int activeBuffer);
+		void loadEnvironment(int index);
+		void saveEnvironment();
 };
 #endif
