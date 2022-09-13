@@ -323,6 +323,44 @@ void vim_r::takeActionNormal(int ch)
 			else
 				this->cp.moveCursor(INSERT, RIGHT);
 		}
+		else if ((char)ch=='o')
+		{
+			this->m=INSERT;
+			if (this->ft==nullptr)
+			{
+				this->ft=new fileContent();
+				this->cp.linePos=this->ft;
+				this->cp.charPos=0;
+			}
+			fileContent *newline=new fileContent();
+			newline->next=this->cp.linePos->next;
+			if (newline->next!=nullptr)
+				newline->next->prev=newline;
+			this->cp.linePos->next=newline;
+			newline->prev=this->cp.linePos;
+			this->cp.linePos=newline;
+			this->cp.charPos=0;
+		}
+		else if ((char)ch=='O')
+		{
+			this->m=INSERT;
+			if (this->ft==nullptr)
+			{
+				this->ft=new fileContent();
+				this->cp.linePos=this->ft;
+				this->cp.charPos=0;
+			}
+			fileContent *newline=new fileContent();
+			newline->prev=this->cp.linePos->prev;
+			if (newline->prev!=nullptr)
+				newline->prev->next=newline;
+			else
+				this->ft=newline;
+			this->cp.linePos->prev=newline;
+			newline->next=this->cp.linePos;
+			this->cp.linePos=newline;
+			this->cp.charPos=0;
+		}
 		else if ((char)ch=='R')
 		{
 			this->m=REPLACE;
