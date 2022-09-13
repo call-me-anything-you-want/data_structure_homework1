@@ -242,6 +242,46 @@ void vim_r::takeActionNormal(int ch)
 			this->cp.moveCursor(NORMAL, RIGHT);
 		else if ((char)ch=='h')
 			this->cp.moveCursor(NORMAL, LEFT);
+		else if ((char)ch=='0')
+		{
+			// go to the begin of the line
+			if (this->cp.linePos==nullptr)
+			{
+				this->cp.linePos=new fileContent();
+				this->ft=this->cp.linePos;
+				this->cp.charPos=0;
+			}
+			else
+				this->cp.charPos=0;
+		}
+		else if ((char)ch=='$')
+		{
+			// go to the end of the line
+			if (this->cp.linePos==nullptr)
+			{
+				this->cp.linePos=new fileContent();
+				this->ft=this->cp.linePos;
+				this->cp.charPos=0;
+			}
+			else
+				this->cp.charPos=this->cp.linePos->line.size()-1;
+		}
+		else if ((char)ch=='G')
+		{
+			// go to the end of the file
+			if (this->cp.linePos==nullptr)
+			{
+				this->cp.linePos=new fileContent();
+				this->ft=this->cp.linePos;
+				this->cp.charPos=0;
+			}
+			else
+			{
+				while (this->cp.linePos->next!=nullptr)
+					this->cp.linePos=this->cp.linePos->next;
+				this->cp.charPos=0;
+			}
+		}
 		else if ((char)ch=='x')
 		{
 			// delete the char under the cursor
@@ -262,6 +302,23 @@ void vim_r::takeActionNormal(int ch)
 				this->cp.charPos=0;
 			// if deleted the last character, cursor needs to be moved back
 			this->cp.moveCursor(NORMAL, NONE);
+		}
+		else if ((char)ch=='~')
+		{
+			// change between upper case and lower case
+			this->cp.moveCursor(NORMAL, NONE);
+			if (this->cp.linePos->line[this->cp.charPos]>='a' && this->cp.linePos->line[this->cp.charPos]<='z')
+			{
+				this->cp.linePos->line[this->cp.charPos]-=32;
+				this->changed=true;
+			}
+			else if (this->cp.linePos->line[this->cp.charPos]>='A' && this->cp.linePos->line[this->cp.charPos]<='Z')
+			{
+				this->cp.linePos->line[this->cp.charPos]+=32;
+				this->changed=true;
+			}
+			this->cp.moveCursor(NORMAL, RIGHT);
+			this->saveEnvironment();
 		}
 		else if ((char)ch=='p')
 		{
@@ -340,6 +397,8 @@ void vim_r::takeActionNormal(int ch)
 			newline->prev=this->cp.linePos;
 			this->cp.linePos=newline;
 			this->cp.charPos=0;
+			this->changed=true;
+			this->saveEnvironment();
 		}
 		else if ((char)ch=='O')
 		{
@@ -360,6 +419,8 @@ void vim_r::takeActionNormal(int ch)
 			newline->next=this->cp.linePos;
 			this->cp.linePos=newline;
 			this->cp.charPos=0;
+			this->changed=true;
+			this->saveEnvironment();
 		}
 		else if ((char)ch=='R')
 		{
