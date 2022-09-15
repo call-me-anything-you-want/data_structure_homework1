@@ -116,20 +116,46 @@ void vim_r::display(HANDLE *hOutBuffer, int count)
     GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &csbi);
     columns = csbi.srWindow.Right - csbi.srWindow.Left + 1;
     rows = csbi.srWindow.Bottom - csbi.srWindow.Top + 1;
+	int headRows=3; // the number of rows unrelated to text at the head of the buffer
+	int tailRows=3; // the number of rows unrelated to text at the tail of the buffer
+	int textRows=rows-headRows-tailRows;
+	int textColumns=columns-2;
 
 	COORD coord = { 0,0 };
 	DWORD bytes = 0;
-	WriteConsoleOutputCharacter(hOutBuffer[activeBuffer], this->filename.data(), this->filename.size(), coord, &bytes);
+
+	if (rows<headRows+tailRows+1)
+	{
+		coord.Y=rows-1;
+		WriteConsoleOutputCharacter(hOutBuffer[activeBuffer], "window too small", 16, coord, &bytes);
+		return;
+	}
+
+	// filename and changed
+	WriteConsoleOutputCharacter(hOutBuffer[activeBuffer], this->filename.data(), min((int)this->filename.size(), columns), coord, &bytes);
 	coord.Y+=1;
 	if (this->changed)
-		WriteConsoleOutputCharacter(hOutBuffer[activeBuffer], "changed", 7, coord, &bytes);
+		WriteConsoleOutputCharacter(hOutBuffer[activeBuffer], "changed", min(7, columns), coord, &bytes);
 	else
-		WriteConsoleOutputCharacter(hOutBuffer[activeBuffer], "unchanged", 9, coord, &bytes);
-	coord.Y+=2;
-	fileContent *temp=this->ft;
-	while (temp!=nullptr)
+		WriteConsoleOutputCharacter(hOutBuffer[activeBuffer], "unchanged", min(9, columns), coord, &bytes);
+	coord.Y+=1;
+	string splitLine=string(columns, '=');
+	WriteConsoleOutputCharacter(hOutBuffer[activeBuffer], splitLine.data(), columns, coord, &bytes);
+
+	// file content
+	fileContent *temp=this->cp.linePos;
+	coord.Y=(textRows+1)/2+headRows-1;
+	cursorPos tempCursor;
+	tempCursor.linePos=this->cp.linePos;
+	tempCursor.charPos=this->cp.charPos;
+	tempCursor.moveCursor(this->m, NONE);
+	int currentBeg=tempCursor.charPos/textColumns*textColumns;
+	while (coord.Y>headRows-1)
 	{
-		string currentLine=temp->line;
+		// print
+		string currentLine=temp->line.substr(currentBeg, textColumns);
+
+		// change the text to cursor if needed
 		if (temp==this->cp.linePos && count<7)
 		{
 			if (this->m==NORMAL)
@@ -187,12 +213,66 @@ void vim_r::display(HANDLE *hOutBuffer, int count)
 				}
 			}
 		}
+
+		// output
+		if (currentBeg==0)
+			currentLine="* "+currentLine;
+		else
+			currentLine="  "+currentLine;
 		WriteConsoleOutputCharacter(hOutBuffer[activeBuffer], currentLine.data(), currentLine.size(), coord, &bytes);
-		temp=temp->next;
-		coord.Y++;
+
+		// prepare for next iteration
+		if (currentBeg!=0)
+			currentBeg-=textColumns;
+		else
+		{
+			temp=temp->prev;
+			if (temp==nullptr)
+				break;
+			currentBeg=temp->line.size()/textColumns*textColumns;
+		}
+
+		coord.Y--;
 	}
+
+	coord.Y=(textRows+1)/2+headRows;
+	temp=this->cp.linePos;
+	currentBeg=tempCursor.charPos/textColumns*textColumns+textColumns;
+	if (currentBeg>=this->cp.linePos->line.size())
+	{
+		currentBeg=0;
+		temp=temp->next;
+	}
+	if (temp!=nullptr)
+	{
+		while (coord.Y<rows-tailRows)
+		{
+			// print
+			string currentLine=temp->line.substr(currentBeg, textColumns);
+
+			if (currentBeg==0)
+				currentLine="* "+currentLine;
+			else
+				currentLine="  "+currentLine;
+			WriteConsoleOutputCharacter(hOutBuffer[activeBuffer], currentLine.data(), currentLine.size(), coord, &bytes);
+
+			// prepare for next iteration
+			currentBeg+=textColumns;
+			if (currentBeg>=temp->line.size())
+			{
+				temp=temp->next;
+				if (temp==nullptr)
+					break;
+				currentBeg=0;
+			}
+			coord.Y++;
+		}
+	}
+
+	// mode and message
+	coord.Y=rows-tailRows;
+	WriteConsoleOutputCharacter(hOutBuffer[activeBuffer], splitLine.data(), columns, coord, &bytes);
 	coord.Y++;
-	coord.Y=rows-2;
 	string currentMode;
 	if (this->m==NORMAL)
 		currentMode="--NORMAL--";
@@ -210,6 +290,7 @@ void vim_r::display(HANDLE *hOutBuffer, int count)
 	SetConsoleActiveScreenBuffer(hOutBuffer[activeBuffer]);//设置新的缓冲区为活动显示缓冲
 	Sleep(50);
 
+	// recreate the next handle to clear the screen
 	int nextHandleIndex=(activeBuffer+1)%2;
 	CloseHandle(hOutBuffer[nextHandleIndex]);
 	hOutBuffer[nextHandleIndex] = CreateConsoleScreenBuffer(
