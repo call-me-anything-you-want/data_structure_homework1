@@ -109,11 +109,13 @@ void vim_r::run()
 void vim_r::display(HANDLE *hOutBuffer, int count)
 {
 	int activeBuffer=count%2;
-	//HWND hwnd=FindWindowA(nullptr, "vim_r");
-	//LPRECT lpRect;
-	//GetWindowRect(hwnd, lpRect);
-	//int bufferHeight=lpRect->bottom-lpRect->top;
-	//int bufferWidth=lpRect->right-lpRect->left;
+
+	// get rows and columns of the current buffer
+    CONSOLE_SCREEN_BUFFER_INFO csbi;
+    int columns, rows;
+    GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &csbi);
+    columns = csbi.srWindow.Right - csbi.srWindow.Left + 1;
+    rows = csbi.srWindow.Bottom - csbi.srWindow.Top + 1;
 
 	COORD coord = { 0,0 };
 	DWORD bytes = 0;
@@ -190,6 +192,7 @@ void vim_r::display(HANDLE *hOutBuffer, int count)
 		coord.Y++;
 	}
 	coord.Y++;
+	coord.Y=rows-2;
 	string currentMode;
 	if (this->m==NORMAL)
 		currentMode="--NORMAL--";
