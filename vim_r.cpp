@@ -5,7 +5,6 @@
 #include<conio.h>
 #include<vector>
 #include<Windows.h>
-#include<winuser.h>
 using namespace std;
 vim_r::vim_r(char *filename) : cp(), changed(false), currentCursorAhead(false), clipBoard(nullptr), historyEnvironment(vector<environment>()), currrentEnvironmentIndex(-1)
 {
@@ -84,7 +83,7 @@ void vim_r::run()
 	SetConsoleCursorInfo(hOutBuffer[0], &cci);
 	SetConsoleCursorInfo(hOutBuffer[1], &cci);
 	int count=0;
-	//SetConsoleTitle("vim_r");
+	SetConsoleTitleA("vim_r");
 	for (;;)
 	{
 		if (_kbhit())
@@ -113,18 +112,13 @@ void vim_r::display(HANDLE *hOutBuffer, int count)
 	//HWND hwnd=FindWindowA(nullptr, "vim_r");
 	//LPRECT lpRect;
 	//GetWindowRect(hwnd, lpRect);
-	//int bufferWidth=lpRect->right-lpRect->left;
 	//int bufferHeight=lpRect->bottom-lpRect->top;
-
-	//PCONSOLE_SCREEN_BUFFER_INFO lpConsoleScreenBufferInfo;
-	//GetConsoleScreenBufferInfo(hOutBuffer[activeBuffer], lpConsoleScreenBufferInfo);
-	//int bufferWidth=lpConsoleScreenBufferInfo->dwSize.X;
-	//int bufferHeight=lpConsoleScreenBufferInfo->dwSize.Y;
+	//int bufferWidth=lpRect->right-lpRect->left;
 
 	COORD coord = { 0,0 };
 	DWORD bytes = 0;
 	WriteConsoleOutputCharacter(hOutBuffer[activeBuffer], this->filename.data(), this->filename.size(), coord, &bytes);
-	coord.Y=1;
+	coord.Y+=1;
 	if (this->changed)
 		WriteConsoleOutputCharacter(hOutBuffer[activeBuffer], "changed", 7, coord, &bytes);
 	else
@@ -196,7 +190,6 @@ void vim_r::display(HANDLE *hOutBuffer, int count)
 		coord.Y++;
 	}
 	coord.Y++;
-	//coord.Y=bufferHeight-1;
 	string currentMode;
 	if (this->m==NORMAL)
 		currentMode="--NORMAL--";
@@ -208,9 +201,8 @@ void vim_r::display(HANDLE *hOutBuffer, int count)
 		currentMode="--COMMAND--";
 	else if (this->m==REPLACE)
 		currentMode="--REPLACE--";
-	//currentMode+=to_string(bufferHeight);
 	WriteConsoleOutputCharacter(hOutBuffer[activeBuffer], currentMode.data(), currentMode.size(), coord, &bytes);
-	coord.Y+=1;
+	coord.Y++;
 	WriteConsoleOutputCharacter(hOutBuffer[activeBuffer], this->message.data(), this->message.size(), coord, &bytes);
 	SetConsoleActiveScreenBuffer(hOutBuffer[activeBuffer]);//设置新的缓冲区为活动显示缓冲
 	Sleep(50);
