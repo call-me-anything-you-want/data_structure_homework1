@@ -6,7 +6,7 @@
 #include<vector>
 #include<Windows.h>
 using namespace std;
-vim_r::vim_r(char *filename) : cp(), changed(false), currentCursorAhead(false), clipBoard(nullptr), historyEnvironment(vector<environment>()), currrentEnvironmentIndex(-1)
+vim_r::vim_r(char *filename) : cp(), changed(false), currentCursorAhead(false), clipBoard(nullptr), historyEnvironment(vector<environment>()), currrentEnvironmentIndex(-1), lastSearch("")
 {
 	if (filename==nullptr)
 		this->filename="";
@@ -280,7 +280,7 @@ void vim_r::display(HANDLE *hOutBuffer, int count)
 		currentMode="--INSERT--";
 	else if (this->m==VISUAL)
 		currentMode="--VISUAL--";
-	else if (this->m==EX)
+	else if (this->m==COMMAND)
 		currentMode="--COMMAND--";
 	else if (this->m==REPLACE)
 		currentMode="--REPLACE--";
@@ -313,8 +313,8 @@ void vim_r::takeAction(int ch)
 		takeActionNormal(ch);
 	else if (this->m==INSERT)
 		takeActionInsert(ch);
-	else if (this->m==EX)
-		takeActionEx(ch);
+	else if (this->m==COMMAND)
+		takeActionCommand(ch);
 	else if (this->m==VISUAL)
 		takeActionVisual(ch);
 	else if (this->m==REPLACE)
@@ -528,8 +528,37 @@ void vim_r::takeActionNormal(int ch)
 		}
 		else if ((char)ch==':')
 		{
-			this->m=EX;
+			this->m=COMMAND;
 			this->message=":";
+		}
+		else if ((char)ch=='/')
+		{
+			this->m=COMMAND;
+			this->message="/";
+		}
+		else if ((char)ch=='?')
+		{
+			this->m=COMMAND;
+			this->message="?";
+		}
+		else if ((char)ch=='n')
+		{
+			if (this->lastSearch.size()==0)
+				return;
+			this->message=this->lastSearch;
+			this->takeActionCommand(this->lastSearch);
+		}
+		else if ((char)ch=='N')
+		{
+			if (this->lastSearch.size()==0)
+				return;
+			string temp=this->lastSearch;
+			if (temp[0]=='/')
+				temp[0]='?';
+			else
+				temp[0]='/';
+			this->message=temp;
+			this->takeActionCommand(temp);
 		}
 		else if ((char)ch=='u')
 		{
@@ -662,14 +691,14 @@ void vim_r::takeActionInsert(int ch)
 	}
 }
 
-void vim_r::takeActionEx(int ch)
+void vim_r::takeActionCommand(int ch)
 {
 	if (ch<=127)
 	{
 		if ((char)ch=='\r')
 		{
 			// deal with command
-			this->takeActionEX(this->message);
+			this->takeActionCommand(this->message);
 			this->m=NORMAL;
 		}
 		else if ((char)ch=='\t')
@@ -684,70 +713,91 @@ void vim_r::takeActionEx(int ch)
 		if (ch==83+256)
 		{
 			// del key
-			this->takeActionEx('\b');
+			this->takeActionCommand('\b');
 		}
 	}
 }
 
-void vim_r::takeActionEX(string EXmessage)
+void vim_r::takeActionCommand(string EXmessage)
 {
-	// delete extra spaces and leading colon in the EXmessage
 	if (EXmessage[0]==':')
-		EXmessage.erase(0, 1);
-	for (int i=EXmessage.size()-1;i>=0;i--)
 	{
-		if (EXmessage[i]==' ')
-			EXmessage.erase(i, 1);
-		else
-			break;
-	}
-	for (int i=0;i<EXmessage.size();i++)
-	{
-		if (EXmessage[i]==' ')
+		// delete extra spaces and leading colon in the EXmessage
+		if (EXmessage[0]==':')
+			EXmessage.erase(0, 1);
+		for (int i=EXmessage.size()-1;i>=0;i--)
 		{
-			EXmessage.erase(i, 1);
-			i--;
+			if (EXmessage[i]==' ')
+				EXmessage.erase(i, 1);
+			else
+				break;
 		}
-		else
-			break;
-	}
-	for (int i=1;i<EXmessage.size();++i)
-	{
-		if (EXmessage[i-1]==' ' && EXmessage[i]==' ')
+		for (int i=0;i<EXmessage.size();i++)
 		{
-			EXmessage.erase(i, 1);
-			i--;
-		}
-	}
-
-	if (EXmessage=="")
-		return;
-
-	// find the command
-	string command="";
-	vector<string> parameters(0);
-	int beg=0, end=0;
-	while(end<EXmessage.size() && EXmessage[end]!=' ' && EXmessage[end]!='/')
-		++end;
-	command=EXmessage.substr(0, end);
-	if (end<EXmessage.size()-1)
-		EXmessage=EXmessage.substr(end+1);
-	else
-		EXmessage="";
-
-	// take actions
-	if (command=="w" || command=="write")
-	{
-		// write
-		if (EXmessage.size()==0)
-		{
-			if (this->filename=="")
-				this->message="No file name.";
-			else if (this->changed)
+			if (EXmessage[i]==' ')
 			{
-				// just write the current file
-				// delete the file content before writing
-				fstream fout(this->filename, ios::out|ios::trunc);
+				EXmessage.erase(i, 1);
+				i--;
+			}
+			else
+				break;
+		}
+		for (int i=1;i<EXmessage.size();++i)
+		{
+			if (EXmessage[i-1]==' ' && EXmessage[i]==' ')
+			{
+				EXmessage.erase(i, 1);
+				i--;
+			}
+		}
+
+		if (EXmessage=="")
+			return;
+
+		// find the command
+		string command="";
+		vector<string> parameters(0);
+		int beg=0, end=0;
+		while(end<EXmessage.size() && EXmessage[end]!=' ' && EXmessage[end]!='/')
+			++end;
+		command=EXmessage.substr(0, end);
+		if (end<EXmessage.size()-1)
+			EXmessage=EXmessage.substr(end+1);
+		else
+			EXmessage="";
+
+		// take actions
+		if (command=="w" || command=="write")
+		{
+			// write
+			if (EXmessage.size()==0)
+			{
+				if (this->filename=="")
+					this->message="No file name.";
+				else if (this->changed)
+				{
+					// just write the current file
+					// delete the file content before writing
+					fstream fout(this->filename, ios::out|ios::trunc);
+					fileContent *temp=this->ft;
+					while (temp!=nullptr)
+					{
+						fout << temp->line;
+						temp=temp->next;
+						if (temp!=nullptr)
+							fout << endl;
+					}
+					fout.close();
+					this->message=this->filename+"has been written.";
+					this->changed=false;
+				}
+				else
+					this->message=this->filename+"has been written.";
+			}
+			else
+			{
+				// write the current file to file EXmessage
+				fstream fout(EXmessage, ios::out|ios::trunc);
 				fileContent *temp=this->ft;
 				while (temp!=nullptr)
 				{
@@ -757,48 +807,191 @@ void vim_r::takeActionEX(string EXmessage)
 						fout << endl;
 				}
 				fout.close();
-				this->message=this->filename+"has been written.";
+				this->filename=EXmessage;
+				this->message=this->filename+" has been written.";
 				this->changed=false;
+				this->saveEnvironment();
+			}
+		}
+		else if(command=="q" || command=="quit")
+		{
+			// quit
+			if (!this->changed)
+				exit(0);
+			else
+				this->message="No write since last change.";
+		}
+		else if (command=="q!")
+		{
+			// quit with out save
+			exit(0);
+		}
+		else if (command=="wq")
+		{
+			this->takeActionCommand(":w");
+			this->takeActionCommand(":q");
+		}
+	}
+	else if (EXmessage[0]=='/')
+	{
+		this->lastSearch=EXmessage;
+		// search after the current cursor
+		string searchingString=EXmessage.substr(1);
+		cursorPos currentCursor=this->cp;
+		currentCursor.moveCursor(NORMAL, NONE);
+		int pos=0;
+		while (currentCursor.linePos!=nullptr)
+		{
+			if (pos>=currentCursor.linePos->line.size())
+			{
+				currentCursor.linePos=currentCursor.linePos->next;
+				pos=0;
+				continue;
+			}
+			pos=currentCursor.linePos->line.find(searchingString, pos);
+			if (pos==string::npos)
+			{
+				currentCursor.linePos=currentCursor.linePos->next;
+				pos=0;
+			}
+			else if (this->cp.linePos==currentCursor.linePos && pos<=currentCursor.charPos)
+				pos+=searchingString.size();
+			else
+				break;
+		}
+		if (currentCursor.linePos!=nullptr)
+		{
+			// find one before reaching the end, jump to it
+			this->cp=currentCursor;
+			this->cp.charPos=pos;
+			return;
+		}
+		this->message="The begin of the file has been reached, and then continue to search from the end";
+		currentCursor.linePos=this->ft;
+		pos=0;
+		while (currentCursor.linePos!=this->cp.linePos)
+		{
+			if (pos>=currentCursor.linePos->line.size())
+			{
+				currentCursor.linePos=currentCursor.linePos->next;
+				pos=0;
+				continue;
+			}
+			pos=currentCursor.linePos->line.find(searchingString, pos);
+			if (pos==string::npos)
+			{
+				currentCursor.linePos=currentCursor.linePos->next;
+				pos=0;
 			}
 			else
-				this->message=this->filename+"has been written.";
+				break;
 		}
-		else
+		if (currentCursor.linePos!=this->cp.linePos)
 		{
-			// write the current file to file EXmessage
-			fstream fout(EXmessage, ios::out|ios::trunc);
-			fileContent *temp=this->ft;
-			while (temp!=nullptr)
-			{
-				fout << temp->line;
-				temp=temp->next;
-				if (temp!=nullptr)
-					fout << endl;
-			}
-			fout.close();
-			this->filename=EXmessage;
-			this->message=this->filename+" has been written.";
-			this->changed=false;
-			this->saveEnvironment();
+			// find one before reaching the end, jump to it
+			this->cp=currentCursor;
+			this->cp.charPos=pos;
+			return;
 		}
+		this->message="Pattern not found: "+searchingString;
 	}
-	else if(command=="q" || command=="quit")
+	else if (EXmessage[0]=='?')
 	{
-		// quit
-		if (!this->changed)
-			exit(0);
-		else
-			this->message="No write since last change.";
-	}
-	else if (command=="q!")
-	{
-		// quit with out save
-		exit(0);
-	}
-	else if (command=="wq")
-	{
-		this->takeActionEX(":w");
-		this->takeActionEX(":q");
+		this->lastSearch=EXmessage;
+		// search before the current cursor
+		string searchingString=EXmessage.substr(1);
+		cursorPos currentCursor=this->cp;
+		currentCursor.moveCursor(NORMAL, NONE);
+		int pos=0;
+		while (currentCursor.linePos!=nullptr)
+		{
+			vector<int> posFound;
+			while (1)
+			{
+				pos=currentCursor.linePos->line.find(searchingString, pos);
+				if (pos!=string::npos)
+				{
+					posFound.push_back(pos);
+					pos+=searchingString.size();
+				}
+				else
+					break;
+			}
+			if (posFound.size()==0)
+			{
+				currentCursor.linePos=currentCursor.linePos->prev;
+				pos=0;
+			}
+			else if (currentCursor.linePos!=this->cp.linePos)
+			{
+				pos=posFound[posFound.size()-1];
+				break;
+			}
+			else
+			{
+				pos=(int)string::npos;
+				for (int i=posFound.size()-1;i>=0;i--)
+				{
+					if (posFound[i]<currentCursor.charPos)
+					{
+						pos=posFound[i];
+						break;
+					}
+				}
+				if (pos==string::npos)
+				{
+					currentCursor.linePos=currentCursor.linePos->prev;
+					pos=0;
+				}
+				else
+					break;
+			}
+		}
+		if (currentCursor.linePos!=nullptr)
+		{
+			// find one before reaching the end, jump to it
+			this->cp=currentCursor;
+			this->cp.charPos=pos;
+			return;
+		}
+		this->message="The end of the file has been reached, and then continue to search from the beginning";
+		currentCursor.linePos=this->ft;
+		while (currentCursor.linePos->next!=nullptr)
+			currentCursor.linePos=currentCursor.linePos->next;
+		pos=0;
+		while (currentCursor.linePos!=this->cp.linePos)
+		{
+			vector<int> posFound;
+			while (1)
+			{
+				pos=currentCursor.linePos->line.find(searchingString, pos);
+				if (pos!=string::npos)
+				{
+					posFound.push_back(pos);
+					pos+=searchingString.size();
+				}
+				else
+					break;
+			}
+			if (posFound.size()==0)
+			{
+				currentCursor.linePos=currentCursor.linePos->prev;
+				pos=0;
+			}
+			else
+			{
+				pos=posFound[posFound.size()-1];
+				break;
+			}
+		}
+		if (currentCursor.linePos!=this->cp.linePos)
+		{
+			// find one before reaching the end, jump to it
+			this->cp=currentCursor;
+			this->cp.charPos=pos;
+			return;
+		}
+		this->message="Pattern not found: "+searchingString;
 	}
 }
 

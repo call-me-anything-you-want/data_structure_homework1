@@ -3,7 +3,7 @@
 #include<string>
 #include<Windows.h>
 #include<vector>
-enum mode {NORMAL, INSERT, EX, VISUAL, REPLACE};
+enum mode {NORMAL, INSERT, COMMAND, VISUAL, REPLACE};
 enum direction {UP, DOWN, LEFT, RIGHT, NONE};
 class fileContent
 {
@@ -47,7 +47,8 @@ class vim_r
 		mode m; // records current mode
 		bool changed; // true if the file is changed
 		bool currentCursorAhead; // true if the current cursor is before the visualCursor
-		std::string message; // record the message needs to be displayed at the bottom, including input command in EX mode
+		std::string message; // record the message needs to be displayed at the bottom, including input command in COMMAND mode
+		std::string lastSearch; // record the last searching command
 		std::vector<environment> historyEnvironment;
 		int currrentEnvironmentIndex;
 		vim_r(char * filename);
@@ -56,8 +57,8 @@ class vim_r
 		void takeActionNormal(int ch);
 		void takeActionInsert(int ch);
 		void takeActionVisual(int ch);
-		void takeActionEx(int ch); // this one deal with key input
-		void takeActionEX(std::string message); // this one deal with line input
+		void takeActionCommand(int ch); // this one deal with key input
+		void takeActionCommand(std::string message); // this one deal with line input
 		void takeActionReplace(int ch);
 		void display(HANDLE *hOutBuffer, int activeBuffer);
 		void loadEnvironment(int index);
