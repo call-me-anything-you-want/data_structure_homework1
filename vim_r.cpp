@@ -773,6 +773,7 @@ void vim_r::takeActionCommand(string EXmessage)
 					fout.close();
 					this->message=this->filename+"has been written.";
 					this->changed=false;
+					this->saveEnvironment();
 				}
 				else
 					this->message=this->filename+"has been written.";
@@ -794,6 +795,11 @@ void vim_r::takeActionCommand(string EXmessage)
 				this->message=this->filename+" has been written.";
 				this->changed=false;
 				this->saveEnvironment();
+			}
+			for (int i=0;i<this->historyEnvironment.size();++i)
+			{
+				if (i!=this->currrentEnvironmentIndex)
+					historyEnvironment[i].changed=true;
 			}
 		}
 		else if(command=="q" || command=="quit")
