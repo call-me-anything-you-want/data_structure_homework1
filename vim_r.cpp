@@ -59,17 +59,15 @@ vim_r::vim_r(char *filename) : cp(), changed(false), currentCursorAhead(false), 
 
 void vim_r::run()
 {
-	// 双缓冲变量
-	HANDLE hOutBuffer[2];
 	//缓冲区初始化
-	hOutBuffer[0] = CreateConsoleScreenBuffer(
+	this->hOutBuffer[0] = CreateConsoleScreenBuffer(
 			GENERIC_WRITE,//定义进程可以往缓冲区写数据
 			FILE_SHARE_WRITE,//定义缓冲区可以共享写入权限
 			NULL,
 			CONSOLE_TEXTMODE_BUFFER,
 			NULL
 			);
-	hOutBuffer[1] = CreateConsoleScreenBuffer(
+	this->hOutBuffer[1] = CreateConsoleScreenBuffer(
 			GENERIC_WRITE,
 			FILE_SHARE_WRITE,
 			NULL,
@@ -80,8 +78,8 @@ void vim_r::run()
 	CONSOLE_CURSOR_INFO cci;
 	cci.bVisible = 0;
 	cci.dwSize = 1;
-	SetConsoleCursorInfo(hOutBuffer[0], &cci);
-	SetConsoleCursorInfo(hOutBuffer[1], &cci);
+	SetConsoleCursorInfo(this->hOutBuffer[0], &cci);
+	SetConsoleCursorInfo(this->hOutBuffer[1], &cci);
 	int count=0;
 	SetConsoleTitleA("vim_r");
 	for (;;)
@@ -101,12 +99,12 @@ void vim_r::run()
 			}
 		}
 		// use 2 buffers to solve the current flash
-		this->display(hOutBuffer, count);
+		this->display(count);
 		count=(count+1)%14;
 	}
 }
 
-void vim_r::display(HANDLE *hOutBuffer, int count)
+void vim_r::display(int count)
 {
 	int activeBuffer=count%2;
 
@@ -127,20 +125,20 @@ void vim_r::display(HANDLE *hOutBuffer, int count)
 	if (rows<headRows+tailRows+1)
 	{
 		coord.Y=rows-1;
-		WriteConsoleOutputCharacter(hOutBuffer[activeBuffer], "window too small", 16, coord, &bytes);
+		WriteConsoleOutputCharacter(this->hOutBuffer[activeBuffer], "window too small", 16, coord, &bytes);
 		return;
 	}
 
 	// filename and changed
-	WriteConsoleOutputCharacter(hOutBuffer[activeBuffer], this->filename.data(), min((int)this->filename.size(), columns), coord, &bytes);
+	WriteConsoleOutputCharacter(this->hOutBuffer[activeBuffer], this->filename.data(), min((int)this->filename.size(), columns), coord, &bytes);
 	coord.Y+=1;
 	if (this->changed)
-		WriteConsoleOutputCharacter(hOutBuffer[activeBuffer], "changed", min(7, columns), coord, &bytes);
+		WriteConsoleOutputCharacter(this->hOutBuffer[activeBuffer], "changed", min(7, columns), coord, &bytes);
 	else
-		WriteConsoleOutputCharacter(hOutBuffer[activeBuffer], "unchanged", min(9, columns), coord, &bytes);
+		WriteConsoleOutputCharacter(this->hOutBuffer[activeBuffer], "unchanged", min(9, columns), coord, &bytes);
 	coord.Y+=1;
 	string splitLine=string(columns, '=');
-	WriteConsoleOutputCharacter(hOutBuffer[activeBuffer], splitLine.data(), columns, coord, &bytes);
+	WriteConsoleOutputCharacter(this->hOutBuffer[activeBuffer], splitLine.data(), columns, coord, &bytes);
 
 	// file content
 	fileContent *temp=this->cp.linePos;
@@ -219,7 +217,7 @@ void vim_r::display(HANDLE *hOutBuffer, int count)
 			currentLine="* "+currentLine;
 		else
 			currentLine="  "+currentLine;
-		WriteConsoleOutputCharacter(hOutBuffer[activeBuffer], currentLine.data(), currentLine.size(), coord, &bytes);
+		WriteConsoleOutputCharacter(this->hOutBuffer[activeBuffer], currentLine.data(), currentLine.size(), coord, &bytes);
 
 		// prepare for next iteration
 		if (currentBeg!=0)
@@ -254,7 +252,7 @@ void vim_r::display(HANDLE *hOutBuffer, int count)
 				currentLine="* "+currentLine;
 			else
 				currentLine="  "+currentLine;
-			WriteConsoleOutputCharacter(hOutBuffer[activeBuffer], currentLine.data(), currentLine.size(), coord, &bytes);
+			WriteConsoleOutputCharacter(this->hOutBuffer[activeBuffer], currentLine.data(), currentLine.size(), coord, &bytes);
 
 			// prepare for next iteration
 			currentBeg+=textColumns;
@@ -271,7 +269,7 @@ void vim_r::display(HANDLE *hOutBuffer, int count)
 
 	// mode and message
 	coord.Y=rows-tailRows;
-	WriteConsoleOutputCharacter(hOutBuffer[activeBuffer], splitLine.data(), columns, coord, &bytes);
+	WriteConsoleOutputCharacter(this->hOutBuffer[activeBuffer], splitLine.data(), columns, coord, &bytes);
 	coord.Y++;
 	string currentMode;
 	if (this->m==NORMAL)
@@ -284,16 +282,16 @@ void vim_r::display(HANDLE *hOutBuffer, int count)
 		currentMode="--COMMAND--";
 	else if (this->m==REPLACE)
 		currentMode="--REPLACE--";
-	WriteConsoleOutputCharacter(hOutBuffer[activeBuffer], currentMode.data(), currentMode.size(), coord, &bytes);
+	WriteConsoleOutputCharacter(this->hOutBuffer[activeBuffer], currentMode.data(), min((int)currentMode.size(), columns), coord, &bytes);
 	coord.Y++;
-	WriteConsoleOutputCharacter(hOutBuffer[activeBuffer], this->message.data(), this->message.size(), coord, &bytes);
-	SetConsoleActiveScreenBuffer(hOutBuffer[activeBuffer]);//设置新的缓冲区为活动显示缓冲
+	WriteConsoleOutputCharacter(this->hOutBuffer[activeBuffer], this->message.data(), min((int)this->message.size(), columns), coord, &bytes);
+	SetConsoleActiveScreenBuffer(this->hOutBuffer[activeBuffer]);//设置新的缓冲区为活动显示缓冲
 	Sleep(50);
 
 	// recreate the next handle to clear the screen
 	int nextHandleIndex=(activeBuffer+1)%2;
-	CloseHandle(hOutBuffer[nextHandleIndex]);
-	hOutBuffer[nextHandleIndex] = CreateConsoleScreenBuffer(
+	CloseHandle(this->hOutBuffer[nextHandleIndex]);
+	this->hOutBuffer[nextHandleIndex] = CreateConsoleScreenBuffer(
 			GENERIC_WRITE,
 			FILE_SHARE_WRITE,
 			NULL,
@@ -304,7 +302,7 @@ void vim_r::display(HANDLE *hOutBuffer, int count)
 	CONSOLE_CURSOR_INFO cci;
 	cci.bVisible = 0;
 	cci.dwSize = 1;
-	SetConsoleCursorInfo(hOutBuffer[nextHandleIndex], &cci);
+	SetConsoleCursorInfo(this->hOutBuffer[nextHandleIndex], &cci);
 }
 
 void vim_r::takeAction(int ch)
@@ -890,6 +888,84 @@ void vim_r::takeActionCommand(string EXmessage)
 						while (this->cp.charPos!=string::npos)
 						{
 							this->cp.linePos->line.replace(this->cp.charPos, searchingString.size(), targetString);
+							temp=this->cp;
+							this->cp.charPos+=targetString.size();
+							if (this->cp.charPos>=this->cp.linePos->line.size())
+								break;
+							this->cp.charPos=this->cp.linePos->line.find(searchingString, this->cp.charPos);
+						}
+					}
+				}
+				this->cp=temp;
+				this->cp.charPos=0;
+			}
+			else
+			{
+				// change later
+				this->message="Replace with " + targetString + "(y/n/q/l)?";
+				cursorPos temp=this->cp;
+				this->cp.linePos=this->ft;
+				this->cp.charPos=0;
+				this->takeActionCommand("/"+searchingString);
+				if (this->message[0]=='P') // didn't found pattern
+				{
+					this->cp=temp;
+					return;
+				}
+				temp=this->cp;
+				while (this->cp.linePos!=nullptr)
+				{
+					this->cp.charPos=this->cp.linePos->line.find(searchingString);
+					if (this->cp.charPos==string::npos)
+					{
+						this->cp.linePos=this->cp.linePos->next;
+						continue;
+					}
+					if (!global)
+					{
+						// substitute the first match for each line
+						int count=0;
+						char input;
+						while (1)
+						{
+							count=(count+1)%14;
+							this->display(count);
+							if (_kbhit())
+							{
+								input=_getch();
+								if (input=='y' || input=='l' || input=='n' || input=='q' || input==27)
+									break;
+							}
+						}
+						if (input=='y' || input=='l')
+							this->cp.linePos->line.replace(this->cp.charPos, searchingString.size(), targetString);
+						if (input=='l' || input=='q' || input==27)
+							return;
+						temp=this->cp;
+						this->cp.linePos=this->cp.linePos->next;
+					}
+					else
+					{
+						// substitute every match for each line
+						while (this->cp.charPos!=string::npos)
+						{
+							int count=0;
+							char input;
+							while (1)
+							{
+								count=(count+1)%14;
+								this->display(count);
+								if (_kbhit())
+								{
+									input=_getch();
+									if (input=='y' || input=='l' || input=='n' || input=='q' || input==27)
+										break;
+								}
+							}
+							if (input=='y' || input=='l')
+								this->cp.linePos->line.replace(this->cp.charPos, searchingString.size(), targetString);
+							if (input=='l' || input=='q' || input==27)
+								return;
 							temp=this->cp;
 							this->cp.charPos+=targetString.size();
 							if (this->cp.charPos>=this->cp.linePos->line.size())
