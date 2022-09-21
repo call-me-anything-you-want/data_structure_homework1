@@ -723,15 +723,7 @@ void vim_r::takeActionCommand(string EXmessage)
 	if (EXmessage[0]==':')
 	{
 		// delete extra spaces and leading colon in the EXmessage
-		if (EXmessage[0]==':')
-			EXmessage.erase(0, 1);
-		for (int i=EXmessage.size()-1;i>=0;i--)
-		{
-			if (EXmessage[i]==' ')
-				EXmessage.erase(i, 1);
-			else
-				break;
-		}
+		EXmessage.erase(0, 1);
 		for (int i=0;i<EXmessage.size();i++)
 		{
 			if (EXmessage[i]==' ')
@@ -742,15 +734,6 @@ void vim_r::takeActionCommand(string EXmessage)
 			else
 				break;
 		}
-		for (int i=1;i<EXmessage.size();++i)
-		{
-			if (EXmessage[i-1]==' ' && EXmessage[i]==' ')
-			{
-				EXmessage.erase(i, 1);
-				i--;
-			}
-		}
-
 		if (EXmessage=="")
 			return;
 
@@ -770,6 +753,8 @@ void vim_r::takeActionCommand(string EXmessage)
 		if (command=="w" || command=="write")
 		{
 			// write
+			while (EXmessage.size()>0 && EXmessage[0]==' ')
+				EXmessage.erase(0, 1);
 			if (EXmessage.size()==0)
 			{
 				if (this->filename=="")
@@ -830,6 +815,96 @@ void vim_r::takeActionCommand(string EXmessage)
 		{
 			this->takeActionCommand(":w");
 			this->takeActionCommand(":q");
+		}
+		else if (command=="s" || command=="su" || command=="substitute")
+		{
+			while (EXmessage.size()>0 && (EXmessage[0]==' ' || EXmessage[0]=='/'))
+				EXmessage.erase(0, 1);
+			if (EXmessage.size()==0)
+				return;
+			// use targetString to replace searchingString
+			string searchingString="";
+			string targetString="";
+			int count=0;
+			while (count<EXmessage.size() && EXmessage[count]!='/')
+				count++;
+			searchingString=EXmessage.substr(0, count);
+			if (searchingString=="")
+				return;
+			EXmessage.erase(0, count+1);
+			while (count<EXmessage.size() && EXmessage[count]!='/')
+				count++;
+			targetString=EXmessage.substr(0, count);
+			EXmessage.erase(0, count+1);
+			// the remaining EXmessage is the flags, we will only take c(confirm) and g(global)
+			bool confirm=false, global=false;
+			for (int i=0;i<EXmessage.size();++i)
+			{
+				if (EXmessage[i]=='c')
+					confirm=true;
+				else if (EXmessage[i]=='g')
+					global=true;
+				else
+				{
+					string temp=EXmessage.substr(i);
+					while (temp.size()>0 && temp[0]==' ')
+						temp.erase(0, 1);
+					if (temp.size()!=0)
+					{
+						this->message="Trailing characters: " + temp;
+						return;
+					}
+				}
+			}
+			// now it's time to subsitute
+			if (!confirm)
+			{
+				cursorPos temp=this->cp;
+				this->cp.linePos=this->ft;
+				this->cp.charPos=0;
+				this->takeActionCommand("/"+searchingString);
+				if (this->message[0]=='P') // didn't found pattern
+				{
+					this->cp=temp;
+					return;
+				}
+				temp=this->cp;
+				while (this->cp.linePos!=nullptr)
+				{
+					this->cp.charPos=this->cp.linePos->line.find(searchingString);
+					if (this->cp.charPos==string::npos)
+					{
+						this->cp.linePos=this->cp.linePos->next;
+						continue;
+					}
+					if (!global)
+					{
+						// substitute the first match for each line
+						this->cp.linePos->line.replace(this->cp.charPos, searchingString.size(), targetString);
+						temp=this->cp;
+						this->cp.linePos=this->cp.linePos->next;
+					}
+					else
+					{
+						// substitute every match for each line
+						while (this->cp.charPos!=string::npos)
+						{
+							this->cp.linePos->line.replace(this->cp.charPos, searchingString.size(), targetString);
+							temp=this->cp;
+							this->cp.charPos+=targetString.size();
+							if (this->cp.charPos>=this->cp.linePos->line.size())
+								break;
+							this->cp.charPos=this->cp.linePos->line.find(searchingString, this->cp.charPos);
+						}
+					}
+				}
+				this->cp=temp;
+				this->cp.charPos=0;
+			}
+		}
+		else
+		{
+			this->message="Not editor's command: " + EXmessage;
 		}
 	}
 	else if (EXmessage[0]=='/')
