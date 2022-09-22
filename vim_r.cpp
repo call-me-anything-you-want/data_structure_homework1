@@ -357,6 +357,21 @@ void vim_r::takeActionNormal(int ch)
 			else
 				this->cp.charPos=this->cp.linePos->line.size()-1;
 		}
+		else if ((char)ch=='^')
+		{
+			// go to the first non-blank character of the current line
+			this->cp.charPos=0;
+			while (this->cp.charPos<this->cp.linePos->line.size())
+			{
+				char currentChar=this->cp.linePos->line[this->cp.charPos];
+				if (currentChar==' ' || currentChar=='\t' || currentChar=='\r' || currentChar=='\n' || currentChar=='\v')
+					this->cp.charPos++;
+				else
+					break;
+			}
+			if (this->cp.charPos==this->cp.linePos->line.size())
+				this->cp.charPos--;
+		}
 		else if ((char)ch=='G')
 		{
 			// go to the end of the file
@@ -459,6 +474,20 @@ void vim_r::takeActionNormal(int ch)
 			else
 				this->cp.moveCursor(NORMAL, NONE);
 		}
+		else if ((char)ch=='I')
+		{
+			// go to the first non-blank character of the current line and insert
+			this->m=INSERT;
+			this->cp.charPos=0;
+			while (this->cp.charPos<this->cp.linePos->line.size())
+			{
+				char currentChar=this->cp.linePos->line[this->cp.charPos];
+				if (currentChar==' ' || currentChar=='\t' || currentChar=='\r' || currentChar=='\n' || currentChar=='\v')
+					this->cp.charPos++;
+				else
+					break;
+			}
+		}
 		else if ((char)ch=='a')
 		{
 			this->m=INSERT;
@@ -470,6 +499,11 @@ void vim_r::takeActionNormal(int ch)
 			}
 			else
 				this->cp.moveCursor(INSERT, RIGHT);
+		}
+		else if ((char)ch=='A')
+		{
+			this->m=INSERT;
+			this->cp.charPos=this->cp.linePos->line.size();
 		}
 		else if ((char)ch=='o')
 		{
