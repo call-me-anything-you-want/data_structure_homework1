@@ -6,7 +6,7 @@
 #include<vector>
 #include<Windows.h>
 using namespace std;
-vim_r::vim_r(char *filename) : cp(), changed(false), currentCursorAhead(false), clipBoard(nullptr), historyEnvironment(vector<environment>()), currrentEnvironmentIndex(-1), lastSearch("")
+vim_r::vim_r(char *filename) : cp(), changed(false), currentCursorAhead(false), clipBoard(nullptr), historyEnvironment(vector<environment>()), currrentEnvironmentIndex(-1), lastSearch(""), displayCount(0)
 {
 	if (filename==nullptr)
 		this->filename="";
@@ -54,15 +54,11 @@ vim_r::vim_r(char *filename) : cp(), changed(false), currentCursorAhead(false), 
 		this->cp.linePos=this->ft;
 	}
 	this->visualCursor=cursorPos(this->cp);
-	this->saveEnvironment();
-}
 
-void vim_r::run()
-{
-	//缓冲区初始化
+	// initialize console buffer
 	this->hOutBuffer[0] = CreateConsoleScreenBuffer(
-			GENERIC_WRITE,//定义进程可以往缓冲区写数据
-			FILE_SHARE_WRITE,//定义缓冲区可以共享写入权限
+			GENERIC_WRITE,
+			FILE_SHARE_WRITE,
 			NULL,
 			CONSOLE_TEXTMODE_BUFFER,
 			NULL
@@ -74,13 +70,18 @@ void vim_r::run()
 			CONSOLE_TEXTMODE_BUFFER,
 			NULL
 			);
-	//选择隐藏缓冲区光标可见性
+	// make the cursor invisible
 	CONSOLE_CURSOR_INFO cci;
 	cci.bVisible = 0;
 	cci.dwSize = 1;
 	SetConsoleCursorInfo(this->hOutBuffer[0], &cci);
 	SetConsoleCursorInfo(this->hOutBuffer[1], &cci);
-	int count=0;
+
+	this->saveEnvironment();
+}
+
+void vim_r::run()
+{
 	SetConsoleTitleA("vim_r");
 	for (;;)
 	{
@@ -99,13 +100,13 @@ void vim_r::run()
 			}
 		}
 		// use 2 buffers to solve the current flash
-		this->display(count);
-		count=(count+1)%14;
+		this->display();
 	}
 }
 
-void vim_r::display(int count)
+void vim_r::display()
 {
+	int count=this->displayCount;
 	int activeBuffer=count%2;
 
 	// get rows and columns of the current buffer
@@ -288,7 +289,7 @@ void vim_r::display(int count)
 	SetConsoleActiveScreenBuffer(this->hOutBuffer[activeBuffer]);//设置新的缓冲区为活动显示缓冲
 	Sleep(50);
 
-	// recreate the next handle to clear the screen
+	// reinitialize the next handle to clear the screen
 	int nextHandleIndex=(activeBuffer+1)%2;
 	CloseHandle(this->hOutBuffer[nextHandleIndex]);
 	this->hOutBuffer[nextHandleIndex] = CreateConsoleScreenBuffer(
@@ -298,11 +299,12 @@ void vim_r::display(int count)
 			CONSOLE_TEXTMODE_BUFFER,
 			NULL
 			);
-	//选择隐藏缓冲区光标可见性
 	CONSOLE_CURSOR_INFO cci;
 	cci.bVisible = 0;
 	cci.dwSize = 1;
 	SetConsoleCursorInfo(this->hOutBuffer[nextHandleIndex], &cci);
+
+	this->displayCount=(this->displayCount+1)%14;
 }
 
 void vim_r::takeAction(int ch)
@@ -938,12 +940,10 @@ void vim_r::takeActionCommand(string EXmessage)
 					if (!global)
 					{
 						// substitute the first match for each line
-						int count=0;
 						char input;
 						while (1)
 						{
-							count=(count+1)%14;
-							this->display(count);
+							this->display();
 							if (_kbhit())
 							{
 								input=_getch();
@@ -967,8 +967,7 @@ void vim_r::takeActionCommand(string EXmessage)
 							char input;
 							while (1)
 							{
-								count=(count+1)%14;
-								this->display(count);
+								this->display();
 								if (_kbhit())
 								{
 									input=_getch();

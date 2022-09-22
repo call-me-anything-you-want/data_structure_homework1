@@ -52,6 +52,7 @@ class vim_r
 		std::vector<environment> historyEnvironment;
 		int currrentEnvironmentIndex;
 		HANDLE hOutBuffer[2]; // use buffer to display
+		int displayCount;
 		vim_r(char * filename);
 		void run();
 		void takeAction(int ch);
@@ -61,7 +62,7 @@ class vim_r
 		void takeActionCommand(int ch); // this one deal with key input
 		void takeActionCommand(std::string message); // this one deal with line input
 		void takeActionReplace(int ch);
-		void display(int activeBuffer);
+		void display();
 		void loadEnvironment(int index);
 		void saveEnvironment();
 };
