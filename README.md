@@ -55,6 +55,7 @@
 	* historyEnvironment，vector类型变量，记录过去的缓冲区内容及相关信息
 	* currentEnvironmentIndex，int类型变量，记录当前缓冲区在historyEnvironment中的位置
 	* hOutBuffer，HANDLE *类型变量，记录两个屏幕缓冲区（并非文件缓冲区）
+	* displayCount，int类型变量，记录当前使用的屏幕缓冲区索引，控制光标的显示情况
 	* vim_r(char *filename)，构造函数，进行变量初始化及将文件读入缓冲区
 	* run()，调用display展示文件缓冲区的内容，同时监听键盘输入
 	* takeAction(int ch)，对键盘输入进行初步处理和分流
