@@ -740,7 +740,11 @@ void vim_r::takeActionCommand(int ch)
 			// do nothing for now
 		}
 		else if ((char)ch=='\b')
+		{
 			this->message.erase(this->message.size()-1, 1);
+			if (this->message.size()==0)
+				this->m=NORMAL;
+		}
 		else if (ch==27)
 		{
 			// esc
