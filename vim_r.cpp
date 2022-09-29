@@ -285,7 +285,14 @@ void vim_r::display()
 		currentMode="--REPLACE--";
 	WriteConsoleOutputCharacter(this->hOutBuffer[activeBuffer], currentMode.data(), min((int)currentMode.size(), columns), coord, &bytes);
 	coord.Y++;
-	WriteConsoleOutputCharacter(this->hOutBuffer[activeBuffer], this->message.data(), min((int)this->message.size(), columns), coord, &bytes);
+	if (count<7 && this->m==COMMAND)
+	{
+		string currentMessage=this->message;
+		currentMessage+= "█";
+		WriteConsoleOutputCharacter(this->hOutBuffer[activeBuffer], currentMessage.data(), min((int)currentMessage.size(), columns), coord, &bytes);
+	}
+	else
+		WriteConsoleOutputCharacter(this->hOutBuffer[activeBuffer], this->message.data(), min((int)this->message.size(), columns), coord, &bytes);
 	SetConsoleActiveScreenBuffer(this->hOutBuffer[activeBuffer]);//设置新的缓冲区为活动显示缓冲
 	Sleep(50);
 
@@ -882,7 +889,10 @@ void vim_r::takeActionCommand(string EXmessage)
 				count++;
 			searchingString=EXmessage.substr(0, count);
 			if (searchingString=="")
+			{
+				this->message="";
 				return;
+			}
 			EXmessage.erase(0, count+1);
 			while (count<EXmessage.size() && EXmessage[count]!='/')
 				count++;
@@ -952,11 +962,13 @@ void vim_r::takeActionCommand(string EXmessage)
 				}
 				this->cp=temp;
 				this->cp.charPos=0;
+				this->changed=true;
+				this->saveEnvironment();
 			}
 			else
 			{
 				// change later
-				this->message="Replace with " + targetString + "(y/n/q/l)?";
+				this->message="Replace with " + targetString + " (y/n/q/l)?";
 				cursorPos temp=this->cp;
 				this->cp.linePos=this->ft;
 				this->cp.charPos=0;
@@ -967,6 +979,7 @@ void vim_r::takeActionCommand(string EXmessage)
 					return;
 				}
 				temp=this->cp;
+				this->m=NORMAL;
 				while (this->cp.linePos!=nullptr)
 				{
 					this->cp.charPos=this->cp.linePos->line.find(searchingString);
@@ -990,9 +1003,15 @@ void vim_r::takeActionCommand(string EXmessage)
 							}
 						}
 						if (input=='y' || input=='l')
+						{
+							this->changed=true;
 							this->cp.linePos->line.replace(this->cp.charPos, searchingString.size(), targetString);
+						}
 						if (input=='l' || input=='q' || input==27)
+						{
+							this->message="";
 							return;
+						}
 						temp=this->cp;
 						this->cp.linePos=this->cp.linePos->next;
 					}
@@ -1014,9 +1033,15 @@ void vim_r::takeActionCommand(string EXmessage)
 								}
 							}
 							if (input=='y' || input=='l')
+							{
+								this->changed=true;
 								this->cp.linePos->line.replace(this->cp.charPos, searchingString.size(), targetString);
+							}
 							if (input=='l' || input=='q' || input==27)
+							{
+								this->message="";
 								return;
+							}
 							temp=this->cp;
 							this->cp.charPos+=targetString.size();
 							if (this->cp.charPos>=this->cp.linePos->line.size())
@@ -1027,7 +1052,9 @@ void vim_r::takeActionCommand(string EXmessage)
 				}
 				this->cp=temp;
 				this->cp.charPos=0;
+				this->saveEnvironment();
 			}
+			this->message="";
 		}
 		else
 		{
