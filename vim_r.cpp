@@ -967,7 +967,7 @@ void vim_r::takeActionCommand(string EXmessage)
 			}
 			else
 			{
-				// change later
+				// change with confirm
 				this->message="Replace with " + targetString + " (y/n/q/l)?";
 				cursorPos temp=this->cp;
 				this->cp.linePos=this->ft;
@@ -1122,6 +1122,14 @@ void vim_r::takeActionCommand(string EXmessage)
 			this->cp.charPos=pos;
 			return;
 		}
+		currentCursor.charPos=currentCursor.linePos->line.find(searchingString);
+		if (currentCursor.charPos!=string::npos && currentCursor.charPos<=this->cp.charPos)
+		{
+			// find one before in the same line of the starting point, jump to it
+			this->cp=currentCursor;
+			this->cp.charPos=currentCursor.charPos;
+			return;
+		}
 		this->message="Pattern not found: "+searchingString;
 	}
 	else if (EXmessage[0]=='?')
@@ -1218,6 +1226,24 @@ void vim_r::takeActionCommand(string EXmessage)
 			// find one before reaching the end, jump to it
 			this->cp=currentCursor;
 			this->cp.charPos=pos;
+			return;
+		}
+		// try to find one in the same line as the starting point
+		vector<int> posFound;
+		while (1)
+		{
+			pos=currentCursor.linePos->line.find(searchingString, pos);
+			if (pos!=string::npos)
+			{
+				posFound.push_back(pos);
+				pos+=searchingString.size();
+			}
+			else
+				break;
+		}
+		if (posFound.size()!=0 && posFound[posFound.size()-1]>=this->cp.charPos)
+		{
+			this->cp.charPos=posFound[posFound.size()-1];
 			return;
 		}
 		this->message="Pattern not found: "+searchingString;
