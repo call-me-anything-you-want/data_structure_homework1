@@ -42,6 +42,14 @@ vim_r::vim_r(char *filename) : cp(), changed(false), currentCursorAhead(false), 
 					newline->prev=this->cp.linePos;
 					this->cp.linePos->next=newline;
 					this->cp.linePos=newline;
+					for (int i=0;i<this->cp.linePos->line.size();++i)
+					{
+						if (this->cp.linePos->line[i]=='\t')
+						{
+							this->cp.linePos->line[i]=' ';
+							this->cp.linePos->line.insert(i, 3-i%4, ' ');
+						}
+					}
 				}
 			}
 			this->cp.linePos=this->ft;
@@ -112,7 +120,8 @@ void vim_r::display()
 	// get rows and columns of the current buffer
     CONSOLE_SCREEN_BUFFER_INFO csbi;
     int columns, rows;
-    GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &csbi);
+	HANDLE currentScreenHandle=GetStdHandle(STD_OUTPUT_HANDLE);
+    GetConsoleScreenBufferInfo(currentScreenHandle, &csbi);
     columns = csbi.srWindow.Right - csbi.srWindow.Left + 1;
     rows = csbi.srWindow.Bottom - csbi.srWindow.Top + 1;
 	int headRows=3; // the number of rows unrelated to text at the head of the buffer
@@ -294,6 +303,7 @@ void vim_r::display()
 	else
 		WriteConsoleOutputCharacter(this->hOutBuffer[activeBuffer], this->message.data(), min((int)this->message.size(), columns), coord, &bytes);
 	SetConsoleActiveScreenBuffer(this->hOutBuffer[activeBuffer]);//设置新的缓冲区为活动显示缓冲
+	// SetConsoleActiveScreenBuffer(this->hOutBuffer[0]);//设置新的缓冲区为活动显示缓冲
 	Sleep(50);
 
 	// reinitialize the next handle to clear the screen
@@ -632,6 +642,22 @@ void vim_r::takeActionInsert(int ch)
 {
 	if (ch<=127)
 	{
+		if ((char)ch=='\t')
+		{
+			this->changed=true;
+			this->cp.moveCursor(INSERT, NONE);
+			if (this->cp.linePos->emptyLine())
+			{
+				this->cp.linePos->line="    ";
+				this->cp.charPos=4;
+			}
+			else
+			{
+				int insertNum=4-this->cp.charPos%4;
+				this->cp.linePos->line.insert(this->cp.charPos, insertNum, ' ');
+				this->cp.charPos+=insertNum;
+			}
+		}
 		if ((char)ch=='\r')
 		{
 			this->changed=true;
@@ -1462,6 +1488,10 @@ void vim_r::takeActionReplace(int ch)
 			this->m=NORMAL;
 			this->cp.moveCursor(NORMAL, NONE);
 			this->saveEnvironment();
+		}
+		else if ((char)ch=='\t')
+		{
+			// do nothing
 		}
 		else
 		{
