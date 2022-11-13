@@ -852,12 +852,12 @@ void vim_r::takeActionCommand(string EXmessage)
 							fout << endl;
 					}
 					fout.close();
-					this->message=this->filename+"has been written.";
+					this->message=this->filename+" has been written.";
 					this->changed=false;
 					this->saveEnvironment();
 				}
 				else
-					this->message=this->filename+"has been written.";
+					this->message=this->filename+" has been written.";
 			}
 			else
 			{
@@ -891,7 +891,7 @@ void vim_r::takeActionCommand(string EXmessage)
 			else
 				this->message="No write since last change.";
 		}
-		else if (command=="q!")
+		else if (command=="q!" || command=="quit!")
 		{
 			// quit with out save
 			exit(0);
@@ -1121,7 +1121,7 @@ void vim_r::takeActionCommand(string EXmessage)
 			this->cp.charPos=pos;
 			return;
 		}
-		this->message="The begin of the file has been reached, and then continue to search from the end";
+		this->message="The end of the file has been reached, and then continue to search from the begin";
 		currentCursor.linePos=this->ft;
 		pos=0;
 		while (currentCursor.linePos!=this->cp.linePos)
@@ -1217,7 +1217,7 @@ void vim_r::takeActionCommand(string EXmessage)
 			this->cp.charPos=pos;
 			return;
 		}
-		this->message="The end of the file has been reached, and then continue to search from the beginning";
+		this->message="The begin of the file has been reached, and then continue to search from the end";
 		currentCursor.linePos=this->ft;
 		while (currentCursor.linePos->next!=nullptr)
 			currentCursor.linePos=currentCursor.linePos->next;
